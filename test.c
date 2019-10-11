@@ -26,7 +26,7 @@ int main (){
 	double  complex z=0.+0.*I, p=0.+0.*I, r0=0.+0.*I, r1=0.+0.*I,YY=0.+I*0.;//z-след ,p - след от квадрата матрицы
 	double  l[FL],q,a1,b1; 											//корни характеристического многочлена
 	double 	var;
-	double  H0[FL][FL],W[FL][FL],H0W[FL][FL],H0H0W[FL][FL],WH0W[FL][FL],arr[FL][FL];
+	double  H0[FL][FL],W[FL][FL],H0W[FL][FL],H0H0W[FL][FL],WH0W[FL][FL];
 	double  complex Y[FL],Y0[FL], OMG4[FL][FL], OMG04[FL][FL],sqOMG04[FL][FL],unit[FL][FL],expOMG04[FL][FL];
 	
 	H0[0][0] = 0.; H0[0][1] = 0.; H0[0][2] = 0.;      				//матрица H0
@@ -67,8 +67,8 @@ int main (){
 		for(i=0;i<FL;i++){					    					//Вычисление [H0,W]
 			for(j=0;j<FL;j++){
 				for(k=0;k<FL;k++){
-					arr[i][j] = H0[i][k]*W[k][j]-W[i][k]*H0[k][j];
-					H0W[i][j] += arr[i][j];// var
+					var = H0[i][k]*W[k][j]-W[i][k]*H0[k][j];
+					H0W[i][j] += var;
 				}
 			}
 		}     														//
@@ -77,8 +77,8 @@ int main (){
 		for(i=0;i<FL;i++){					    					//Вычисление [H0,[H0,W]]
 			for(j=0;j<FL;j++){
 				for(k=0;k<FL;k++){
-					arr[i][j] = H0[i][k]*H0W[k][j]-H0W[i][k]*H0[k][j];
-					H0H0W[i][j] += arr[i][j];
+					var = H0[i][k]*H0W[k][j]-H0W[i][k]*H0[k][j];
+					H0H0W[i][j] += var;
 				}
 			}
 		}															//
@@ -87,8 +87,8 @@ int main (){
 		for(i=0;i<FL;i++){											//Вычисление [W,[H0,W]]
 			for(j=0;j<FL;j++){
 				for(k=0;k<FL;k++){
-					arr[i][j] = W[i][k]*H0W[k][j]-H0W[i][k]*W[k][j];
-					WH0W[i][j] += arr[i][j];
+					var = W[i][k]*H0W[k][j]-H0W[i][k]*W[k][j];
+					WH0W[i][j] += var;
 				}
 			}
 		}															//	
@@ -123,7 +123,7 @@ int main (){
 																	//vSun -> var
 		e = e0;	
 											
-		//while(e<1.){												//начало цикла по точкам
+		while(e<1.0){												//начало цикла по точкам
 			
 			ep = e+(1.+1./sqrt(3.))*(dh/2.);
 			em = e+(1.-1./sqrt(3.))*(dh/2.);;
@@ -169,8 +169,13 @@ int main (){
 			l[0] = 2.*cos((1./3.)*acos((3.*q/(2.*p))*sqrt(3./p))-(2.*M_PI*2.)/3.);
 																							//
 																				  
-			/*for(){
-				}	*/												//упорядочиваем корни характер. многочлена
+			for( i=0; i < FL; i++) {             					//упорядочиваем корни характер. многочлена
+				for( j = FL-1; j > i; j-- ) {     
+					if ( l[j-1] > l[j] ) {
+						var = l[j]; l[j] = l[j-1]; l[j-1] = var;
+					}
+				}
+			}														//	
 			
 			
 			a1 = l[1]-l[0]; // a1=a , b1=b смотри статью
@@ -212,8 +217,8 @@ int main (){
 			printf("\n");
 			printf("Проверка нормировки <YY* = %lf + i*%lf>\n",creal(YY),cimag(YY));
 																	//
-				//e = e+dh;
-		//}															// конец цикла по точкам 
+				e = e+dh;
+		}															// конец цикла по точкам 
 			
 			
 			unit[0][0]=0.; unit[0][1]=0.; unit[0][2]=0.; 
