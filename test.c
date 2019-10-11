@@ -5,7 +5,7 @@
 double vSun (double , double , double );
 
 enum{
-	FLAVS=3
+	FL=3
 };
 
 double vSun (double g, double eta, double e){
@@ -26,8 +26,8 @@ int main (){
 	double  complex z=0.+0.*I, p=0.+0.*I, r0=0.+0.*I, r1=0.+0.*I,YY=0.+I*0.;//z-след ,p - след от квадрата матрицы
 	double  l0,l1,l2,q,a1,b1; //корни характеристического многочлена
 	double 	var;
-	double  H0[3][3],W[3][3],H0W[3][3],H0H0W[3][3],WH0W[3][3],arr[3][3];
-	double complex Y[3],Y0[3], OMG4[3][3], OMG04[3][3],sqOMG04[3][3],unit[3][3],expOMG04[3][3];
+	double  H0[FL][FL],W[FL][FL],H0W[FL][FL],H0H0W[FL][FL],WH0W[FL][FL],arr[FL][FL];
+	double complex Y[FL],Y0[FL], OMG4[FL][FL], OMG04[FL][FL],sqOMG04[FL][FL],unit[FL][FL],expOMG04[FL][FL];
 	
 	H0[0][0] = 0.; H0[0][1] = 0.; H0[0][2] = 0.;//матрица H0
 	H0[1][0] = 0.; H0[1][1] = (b*a)/E; H0[1][2] = 0.;
@@ -64,9 +64,9 @@ int main (){
 	sqOMG04[1][0]=0.; sqOMG04[1][1]=0.; sqOMG04[1][2]=0.;
 	sqOMG04[2][0]=0.; sqOMG04[2][1]=0.; sqOMG04[2][2]=0.;
 	
-		for(i=0;i<3;i++){					    //Вычисление [H0,W]
-			for(j=0;j<3;j++){
-				for(k=0;k<3;k++){
+		for(i=0;i<FL;i++){					    //Вычисление [H0,W]
+			for(j=0;j<FL;j++){
+				for(k=0;k<FL;k++){
 					arr[i][j] = H0[i][k]*W[k][j]-W[i][k]*H0[k][j];
 					H0W[i][j] = H0W[i][j]+arr[i][j];// var
 				}
@@ -74,9 +74,9 @@ int main (){
 		}     									//
 	
 	
-		for(i=0;i<3;i++){					    //Вычисление [H0,[H0,W]]
-			for(j=0;j<3;j++){
-				for(k=0;k<3;k++){
+		for(i=0;i<FL;i++){					    //Вычисление [H0,[H0,W]]
+			for(j=0;j<FL;j++){
+				for(k=0;k<FL;k++){
 					arr[i][j] = H0[i][k]*H0W[k][j]-H0W[i][k]*H0[k][j];
 					H0H0W[i][j] = H0H0W[i][j]+arr[i][j];
 				}
@@ -84,9 +84,9 @@ int main (){
 		}										//
 	
 	
-		for(i=0;i<3;i++){						//Вычисление [W,[H0,W]]
-			for(j=0;j<3;j++){
-				for(k=0;k<3;k++){
+		for(i=0;i<FL;i++){						//Вычисление [W,[H0,W]]
+			for(j=0;j<FL;j++){
+				for(k=0;k<FL;k++){
 					arr[i][j] = W[i][k]*H0W[k][j]-H0W[i][k]*W[k][j];
 					WH0W[i][j] = WH0W[i][j]+arr[i][j];
 				}
@@ -94,8 +94,8 @@ int main (){
 		}										//	
 	
 		printf("WH0W\n");
-		for(i=0;i<3;i++){						//Печать матриц
-			for(j=0;j<3;j++){
+		for(i=0;i<FL;i++){						//Печать матриц
+			for(j=0;j<FL;j++){
 				printf("%lf  ",WH0W[i][j]);
 			}
 			printf("\n");
@@ -103,8 +103,8 @@ int main (){
 		printf("\n");
 		
 	    printf("H0H0W\n");	
-		for(i=0;i<3;i++){
-			for(j=0;j<3;j++){
+		for(i=0;i<FL;i++){
+			for(j=0;j<FL;j++){
 				printf("%lf  ",H0H0W[i][j]);
 			}
 			printf("\n");
@@ -112,8 +112,8 @@ int main (){
 		printf("\n");
 	
 		printf("H0W\n");
-		for(i=0;i<3;i++){
-			for(j=0;j<3;j++){
+		for(i=0;i<FL;i++){
+			for(j=0;j<FL;j++){
 				printf("%lf  ",H0W[i][j]);
 			}
 			printf("\n");
@@ -128,24 +128,24 @@ int main (){
 			ep = e+(1.+1./sqrt(3.))*(dh/2.);
 			em = e+(1.-1./sqrt(3.))*(dh/2.);;
 			
-			for(i=0;i<3;i++){						  //вычисление матрицы OMG4  в  точке e_n(кси_n)
-				for(j=0;j<3;j++){
+			for(i=0;i<FL;i++){						  //вычисление матрицы OMG4  в  точке e_n(кси_n)
+				for(j=0;j<FL;j++){
 					OMG4[i][j] = ((-1.)*(H0[i][j]+0.5*(vSun(g,eta,ep)+vSun(g,eta,em))*W[i][j])*dh*I+(sqrt(3.)/12.)*(vSun(g,eta,ep)-vSun(g,eta,em))*H0W[i][j]*dh*dh)*(-1.*I);
 				}
 			}
 			
 			z=(OMG4[0][0]+OMG4[1][1]+OMG4[2][2])/3.; //след OMG4
 					
-			for(i=0;i<3;i++){		 				 //Tr(OMG04)=0
-				for(j=0;j<3;j++){
+			for(i=0;i<FL;i++){		 				 //Tr(OMG04)=0
+				for(j=0;j<FL;j++){
 					OMG04[i][j]=OMG4[i][j]-z*unit[i][j];
 				}
 			}										 //	
 			
-			for(i=0;i<3;i++){					     //Вычисление sqOMG04=OMG04^2
-				for(j=0;j<3;j++){
+			for(i=0;i<FL;i++){					     //Вычисление sqOMG04=OMG04^2
+				for(j=0;j<FL;j++){
 					p=0.+0.*I;
-					for(k=0;k<3;k++){
+					for(k=0;k<FL;k++){
 						p += OMG04[i][k]*OMG04[k][j];
 					}
 					sqOMG04[i][j]=p;
@@ -177,8 +177,8 @@ int main (){
 				 -I*sin(var*b1*e))/b1
 				 );
 			
-			for(i=0;i<3;i++){
-				for(j=0;j<3;j++){
+			for(i=0;i<FL;i++){
+				for(j=0;j<FL;j++){
 					expOMG04[i][j] = exp(sqrt(p/3.)*l0*I*e)*(
 					(1.-l0*(r0-l1*r1))*unit[i][j]
 					+sqrt(3./p)*(r0+l2*r1)*OMG04[i][j]
@@ -187,13 +187,13 @@ int main (){
 				}
 			}
 			
-			for(i=0;i<3;i++){
-				for(j=0;j<3;j++){
+			for(i=0;i<FL;i++){
+				for(j=0;j<FL;j++){
 					Y[i] += expOMG04[i][j]*Y0[j];
 				}
 				Y[i] *= exp(e*z*I);
 			}
-			for(i=0;i<3;i++){
+			for(i=0;i<FL;i++){
 					YY += Y[i]*conj(Y[i]);
 			}
 			printf("<YY* = %lf + i*%lf>\n",creal(YY),cimag(YY));
@@ -206,10 +206,10 @@ int main (){
 			unit[1][0]=0.; unit[1][1]=0.; unit[1][2]=0.;
 			unit[2][0]=0.; unit[2][1]=0.; unit[2][2]=0.;
 			
-			for(i=0;i<3;i++){					    
-				for(j=0;j<3;j++){
+			for(i=0;i<FL;i++){					    
+				for(j=0;j<FL;j++){
 					p=0.+I*0.;
-					for(k=0;k<3;k++){
+					for(k=0;k<FL;k++){
 						p += expOMG04[i][k]*conj(expOMG04[j][k]);
 					}
 					unit[i][j]=p;
@@ -217,8 +217,8 @@ int main (){
 			}     						
 		
 		printf("expOMG04expOMG04*\n");
-		for(i=0;i<3;i++){
-			for(j=0;j<3;j++){
+		for(i=0;i<FL;i++){
+			for(j=0;j<FL;j++){
 				printf("%lf + (%lf)*i  ",creal(unit[i][j]),cimag(unit[i][j]));
 			}
 			printf("\n");
