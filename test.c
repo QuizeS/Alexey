@@ -23,15 +23,14 @@ int main (){
 	double  a=4.35196e6, b=0.030554, E=7.05, g=6.5956e4, eta=10.54;	//a=4.35196*10^6 умножить на 10^6
 	double  s12=0.308, s13=0.0234;
 	double  c12 , c13;
-	double  dh=0.004, ep=0.,em=0.,e=0. , e0 = 0.01, vSunep,vSunem;
+	double  dh=0.004,tol=0.002,Er=0.,s=0.8, ep=0.,em=0.,e=0. , e0 = 0.01, vSunep,vSunem;
 	double complex z=0.+0.*I, p=0.+0.*I, r0=0.+0.*I, r1=0.+0.*I,YY=0.+I*0.;//z-след ,p - след от квадрата матрицы
 	double  l[FL],q,a1,b1; 											//корни характеристического многочлена
 	double 	var;
 	double  H0[FL][FL],W[FL][FL],H0W[FL][FL],H0H0W[FL][FL],WH0W[FL][FL];
 	double complex Y[FL],Y0[FL], OMG4[FL][FL], OMG04[FL][FL],sqOMG04[FL][FL],unit[FL][FL],expOMG04[FL][FL];
-	double complex S1[FL][FL],S2[FL][FL];
-	
-	
+	double complex S1[FL][FL],S2[FL][FL],sqS1[FL][FL],arr[FL];
+
 	H0[0][0] = 0.; H0[0][1] = 0.; H0[0][2] = 0.;      				//матрица H0
 	H0[1][0] = 0.; H0[1][1] = (b*a)/E; H0[1][2] = 0.;
 	H0[2][0] = 0.; H0[2][1] = 0.; H0[2][2] = (a*(1./E));
@@ -41,6 +40,8 @@ int main (){
 	var = 1. - s13*s13;
 	c13 = sqrt(var);
 
+	arr[0]=0.; arr[1]=0.; arr[2]=0.;
+	
 	Y0[0]=c12*c13; Y0[1]=s12*c13; Y0[2]=s13;
 
 	W[0][0] = c13*c13*c12*c12; W[0][1] = c12*s12*c13*c13; W[0][2] = c12*c13*s13;
@@ -66,6 +67,10 @@ int main (){
 	sqOMG04[0][0]=0.; sqOMG04[0][1]=0.; sqOMG04[0][2]=0.; 			// Квадрат A_0 для вычисления Tr(A_0)^2
 	sqOMG04[1][0]=0.; sqOMG04[1][1]=0.; sqOMG04[1][2]=0.;
 	sqOMG04[2][0]=0.; sqOMG04[2][1]=0.; sqOMG04[2][2]=0.;
+	
+	sqS1[0][0]=0; sqS1[0][1]=0; sqS1[0][2]=0;
+	sqS1[1][0]=0; sqS1[1][1]=0; sqS1[1][2]=0;
+	sqS1[2][0]=0; sqS1[2][1]=0; sqS1[2][2]=0;
 	
 		for(i=0;i<FL;i++){					    					//Вычисление [H0,W]
 			for(j=0;j<FL;j++){
@@ -120,7 +125,7 @@ int main (){
 			}
 			printf("\n");
 		}
-																	//
+		printf("\n");															//
 		
 																	//vSun -> var
 		e = e0;	
@@ -221,23 +226,51 @@ int main (){
 			printf("\n");
 			printf("Проверка нормировки <YY* = %lf + i*%lf>\n",creal(YY),cimag(YY));
 																	//
-				e = e+dh;
-		}															// конец цикла по точкам 
-			
-			
-			unit[0][0]=0.; unit[0][1]=0.; unit[0][2]=0.; 
-			unit[1][0]=0.; unit[1][1]=0.; unit[1][2]=0.;
-			unit[2][0]=0.; unit[2][1]=0.; unit[2][2]=0.;
-			
-			for(i=0;i<FL;i++){					    
+				
+			for(i=0;i<FL;i++){										//S1 и S2 понадобятся для расчета величины следующего шага
 				for(j=0;j<FL;j++){
-					p=0.+I*0.;
-					for(k=0;k<FL;k++){
-						p += expOMG04[i][k]*conj(expOMG04[j][k]);
-					}
-					unit[i][j]=p;
+					S1[i][j] = (-sqrt(3.)/12.)*(vSunep-vSunem)*H0W[i][j];
 				}
-			}     						
+			}
+			
+			for(i=0;i<FL;i++){
+				for(j=0;j<FL;j++){
+					S2[i][j] = (I*sqrt(3.)/24.)*(vSunep-vSunem)*(H0H0W[i][j]+(1./2.)*(vSunep+vSunem)*WH0W[i][j]);
+				}
+			}														//
+			
+			for(i=0;i<FL;i++){					    				//sqS1
+				for(j=0;j<FL;j++){
+					for(k=0;k<FL;k++){
+						var = S1[i][k]*S1[k][j];
+						sqS1[i][j] += var;
+					}
+				}													//	
+			}														
+			
+			for(i=0;i<FL;i++){										
+				for(j=0;j<FL;j++){
+					arr[i] += ((dh*dh)*S1[i][j] + dh*dh*dh*S2[i][j]+(1./2.)*dh*dh*dh*dh*sqS1[i][j])*Y[j];
+				}
+			}
+			
+			for(i=0;i<FL;i++){
+				Er += arr[i]*conj(arr[i]);
+			}														
+		
+			printf("arr \n");
+			
+			for(j=0;j<FL;j++){
+				printf(" %lf +(%lf*i) \n",creal(arr[j]),cimag(arr[j]));
+				arr[j]=0.;
+			}
+			
+			printf("\n");											//изменение шага dh
+			dh = s*dh*pow((tol/Er),0.3333);														
+			e = e+dh;					
+			printf(" e=%lf  dh=%lf Er=%lf ",e,dh,Er);
+																	// конец цикла по точкам 
+		}						
 		
 	
 return 0;	
@@ -261,3 +294,17 @@ return 0;
 		}
 		printf("\n");
 	}*/
+
+/*unit[0][0]=0.; unit[0][1]=0.; unit[0][2]=0.; 
+			unit[1][0]=0.; unit[1][1]=0.; unit[1][2]=0.;
+			unit[2][0]=0.; unit[2][1]=0.; unit[2][2]=0.;
+			
+			for(i=0;i<FL;i++){					    
+				for(j=0;j<FL;j++){
+					p=0.+I*0.;
+					for(k=0;k<FL;k++){
+						p += expOMG04[i][k]*conj(expOMG04[j][k]);
+					}
+					unit[i][j]=p;
+				}
+			}   */ 
