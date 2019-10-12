@@ -2,11 +2,11 @@
 #include <math.h>
 #include <complex.h> 
 
-double vSun (double , double , double );
-
 enum{
 	FL=3
 };
+
+double vSun (double , double , double );
 
 double vSun (double g, double eta, double e){
 	
@@ -16,18 +16,21 @@ double v;
 		
 return v;
 }
+
 int main (){
 	
 	int     i,j,k;
 	double  a=4.35196e6, b=0.030554, E=7.05, g=6.5956e4, eta=10.54;	//a=4.35196*10^6 умножить на 10^6
 	double  s12=0.308, s13=0.0234;
 	double  c12 , c13;
-	double  dh=0.01, ep=0.,em=0.,e=0. , e0 = 0.01;
-	double  complex z=0.+0.*I, p=0.+0.*I, r0=0.+0.*I, r1=0.+0.*I,YY=0.+I*0.;//z-след ,p - след от квадрата матрицы
+	double  dh=0.004, ep=0.,em=0.,e=0. , e0 = 0.01, vSunep,vSunem;
+	double complex z=0.+0.*I, p=0.+0.*I, r0=0.+0.*I, r1=0.+0.*I,YY=0.+I*0.;//z-след ,p - след от квадрата матрицы
 	double  l[FL],q,a1,b1; 											//корни характеристического многочлена
 	double 	var;
 	double  H0[FL][FL],W[FL][FL],H0W[FL][FL],H0H0W[FL][FL],WH0W[FL][FL];
-	double  complex Y[FL],Y0[FL], OMG4[FL][FL], OMG04[FL][FL],sqOMG04[FL][FL],unit[FL][FL],expOMG04[FL][FL];
+	double complex Y[FL],Y0[FL], OMG4[FL][FL], OMG04[FL][FL],sqOMG04[FL][FL],unit[FL][FL],expOMG04[FL][FL];
+	double complex S1[FL][FL],S2[FL][FL];
+	
 	
 	H0[0][0] = 0.; H0[0][1] = 0.; H0[0][2] = 0.;      				//матрица H0
 	H0[1][0] = 0.; H0[1][1] = (b*a)/E; H0[1][2] = 0.;
@@ -72,8 +75,7 @@ int main (){
 				}
 			}
 		}     														//
-	
-	
+		
 		for(i=0;i<FL;i++){					    					//Вычисление [H0,[H0,W]]
 			for(j=0;j<FL;j++){
 				for(k=0;k<FL;k++){
@@ -128,11 +130,13 @@ int main (){
 			ep = e+(1.+1./sqrt(3.))*(dh/2.);
 			em = e+(1.-1./sqrt(3.))*(dh/2.);;
 			
+			vSunem = vSun(g,eta,em);
+			vSunep = vSun(g,eta,ep);
 			
 			for(i=0;i<FL;i++){						  				//вычисление матрицы OMG4  в  точке e_n(кси_n)
 				for(j=0;j<FL;j++){
-					OMG4[i][j] = ((-1.)*(H0[i][j]+0.5*(vSun(g,eta,ep)+vSun(g,eta,em))*W[i][j])*dh*I
-								+(sqrt(3.)/12.)*(vSun(g,eta,ep)-vSun(g,eta,em))*H0W[i][j]*dh*dh)*(-1.*I);
+					OMG4[i][j] = ((-1.)*(H0[i][j]+0.5*(vSunep+vSunem)*W[i][j])*dh*I
+								+(sqrt(3.)/12.)*(vSunep-vSunem)*H0W[i][j]*dh*dh)*(-1.*I);
 				}
 			}										 				//
 			
@@ -160,8 +164,8 @@ int main (){
 				+OMG04[2][0]*OMG04[0][1]*OMG04[1][2]-OMG04[2][0]*OMG04[1][1]*OMG04[0][2]
 				-OMG04[0][0]*OMG04[1][2]*OMG04[2][1]-OMG04[1][0]*OMG04[0][1]*OMG04[2][2];  //
 			
-			printf("\n");
-			printf("det(OMG04)= q = < %lf > ; tr(sqOMG04^2) = p = %lf + i*%lf . \n",q,creal(p),cimag(p));
+			//printf("\n");
+			//printf("det(OMG04)= q = < %lf > ; tr(sqOMG04^2) = p = %lf + i*%lf . \n",q,creal(p),cimag(p));
 			
 			
 			l[2] = 2.*cos((1./3.)*acos((3.*q/(2.*p))*sqrt(3./p))-(2.*M_PI*0.)/3.);			//корни характер. многочлена
@@ -181,7 +185,7 @@ int main (){
 			a1 = l[1]-l[0]; // a1=a , b1=b смотри статью
 			b1 = l[2]-l[0];
 			var = sqrt(p/3.);
-			printf("\n");
+			//printf("\n");
 			printf("<l0 = %lf> <l1 = %lf>  <l2 = %lf>, <qp/3..>=%lf \n",l[0],l[1],l[2],q/(var*var*var));
 			
 			
