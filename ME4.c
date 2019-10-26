@@ -7,27 +7,29 @@ enum{
 };
 
 double vS (double , double , double );
-
-double vS (double g, double eta, double e){
-	
-double v;
+double vS (double g, double eta, double e){	
+  
+ double v;
 		
 		v = g*exp((-1.)*eta*e);
 		
-return v;
+ return v;
 }
 
-int main (){
-	
+
+double ME4(double,double,double,double,double,double,
+           double,double [FL][FL],double [FL][FL]); 
+double ME4(double s12, double s13, double E, double dh, double tol,
+           double g,double e0, double H0[FL][FL],double W[FL][FL]){
+		
 	int     i,j;
-	double  q1=4.35196e6, q2=0.030554, E=7.05, g=6.5956e4, eta=10.54;	//a=4.35196*10^6 умножить на 10^6
-	double  s12=0.308, s13=0.0234;
+	double  q1=4.35196e6, q2=0.030554, eta=10.54;	//a=4.35196*10^6 умножить на 10^6
 	double  c12 , c13;
-	double  dh=1e-4,tol=1e-4,Er=0.,s=0.8, ep=0.,em=0.,e=0. , e0 = 0.1, vSep,vSem;
+	double  Er=0.,s=0.8, ep=0.,em=0.,e=0., vSep,vSem;
 	double complex r0=0.+0.*I, r1=0.+0.*I,sqPsi=0.+I*0.;//z-след ,p - след от квадрата матрицы
 	double  l[FL],q,p,z,a,b; 											//корни характеристического многочлена
 	double 	var;
-	double  H0[FL][FL],W[FL][FL],H0W[FL][FL],H0H0W[FL][FL],WH0W[FL][FL];
+	double  H0W[FL][FL],H0H0W[FL][FL],WH0W[FL][FL];
 	double complex Psi[FL],Psi0[FL], A[FL][FL], A0[FL][FL],sqA0[FL][FL],unit[FL][FL],exA0[FL][FL];
 	double complex S1[FL][FL],S2[FL][FL],sqS1[FL][FL],arr[FL];
 
@@ -324,37 +326,18 @@ int main (){
 		     ,creal(Psi[1]),cimag(Psi[1])
 		     ,creal(Psi[2]),cimag(Psi[2]));
 	
+return 0;}
+
+int main (){
+	
+	double  s12=0.308, s13=0.0234, E=7.05,
+			dh=1e-4, tol=1e-4, g = 6.5956e4,
+			e0 = 0.1;
+	double  H0[FL][FL],W[FL][FL];
+	
+	ME4(s12,s13,E,dh,tol,g,e0,H0,W);
+	
+	
 return 0;	
 }
 
-/*	
-	H0[0][0] = 1.; H0[0][1] = 0.; H0[0][2] = 0.;//матрица H0
-	H0[1][0] = 0.; H0[1][1] = 1.; H0[1][2] = 0.;
-	H0[2][0] = 0.; H0[2][1] = 0.; H0[2][2] = 1.;
-
-	W[0][0] = 1.; W[0][1] = 0.; W[0][2] = 0.;
-	W[1][0]= W[0][1]; W[1][1] = 1.; W[1][2] = 0.;
-	W[2][0] = W[0][2]; W[2][1] = W[1][2]; W[2][2] = 1.;
-*/
-
-/*fprintf(stderr,"expOMG04expOMG04*\n");
-	for(i=0;i<FL;i++){
-		for(j=0;j<FL;j++){
-			fprintf(stderr,"%lf + (%lf)*i  ",creal(unit[i][j]),cimag(unit[i][j]));
-		}
-		fprintf(stderr,"\n");
-	}*/
-
-/*unit[0][0]=0.; unit[0][1]=0.; unit[0][2]=0.; 
-			unit[1][0]=0.; unit[1][1]=0.; unit[1][2]=0.;
-			unit[2][0]=0.; unit[2][1]=0.; unit[2][2]=0.;
-			
-			for(i=0;i<FL;i++){					    
-				for(j=0;j<FL;j++){
-					p=0.+I*0.;
-					for(k=0;k<FL;k++){
-						p += expOMG04[i][k]*conj(expOMG04[j][k]);
-					}
-					unit[i][j]=p;
-				}
-			}   */ 
