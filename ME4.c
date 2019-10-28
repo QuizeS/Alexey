@@ -5,13 +5,13 @@
 enum{
 	FL=3
 };
-
+typedef double (*dens)(double);
 typedef struct 
 {
 	complex double Psi0[FL];
 	double H0[FL][FL], W[FL][FL], H0W[FL][FL], WH0W[FL][FL], H0H0W[FL][FL];
 	double tol, a, b;
-	double (*vS)(double);
+	dens vS;
 		
 }Mctx;
 
@@ -50,7 +50,7 @@ void ME4(Mctx *mctx, Exctx *exctx)
 											
 		while(e < mctx->b){												
 			ep = e+(1.+1./sqrt(3.))*(exctx->dh/2.);
-			em = e+(1.-1./sqrt(3.))*(exctx->dh/2.);;
+			em = e+(1.-1./sqrt(3.))*(exctx->dh/2.);
 			
 			vSem = mctx->vS(em);
 			vSep = mctx->vS(ep);
@@ -205,7 +205,8 @@ void ME4(Mctx *mctx, Exctx *exctx)
 				for(j=0;j<FL;j++){
 					S2[i][j] = 
 					  (I*sqrt(3.)/24.)*(vSep-vSem)
-					 *(mctx->H0H0W[i][j]+(1./2.)*(vSep+vSem)*mctx->WH0W[i][j]);
+					 *(mctx->H0H0W[i][j]
+					 +(1./2.)*(vSep+vSem)*mctx->WH0W[i][j]);
 				}
 			}		
 															
@@ -220,6 +221,7 @@ void ME4(Mctx *mctx, Exctx *exctx)
 			arr[0]=0.+I*0.; 
 			arr[1]=0.+I*0.;
 			arr[2]=0.+I*0.;
+			
 			for(i=0;i<FL;i++){										
 				for(j=0;j<FL;j++){
 					arr[i] += ((exctx->dh*exctx->dh)*S1[i][j] 
@@ -243,14 +245,17 @@ void ME4(Mctx *mctx, Exctx *exctx)
 				mctx->Psi0[0] = exctx->Psi[0];
 				mctx->Psi0[1] = exctx->Psi[1]; 
 				mctx->Psi0[2] = exctx->Psi[2]; 
-			}
-							
+			}		
 			//fprintf(stderr,"e = %lf  dh = %g Er = %g \nEnd\n\n\n",e,dh,Er);
 
 														 
 		}
 	exctx->last = e;
-		// конец цикла по точкам 	
+		// конец цикла по точкам 
+		printf("Psi\n");
+		printf("|%g %g\n %g %g\n %g %g|\n",creal(exctx->Psi[0]),cimag(exctx->Psi[0])
+			                              ,creal(exctx->Psi[1]),cimag(exctx->Psi[1])
+			                              ,creal(exctx->Psi[2]),cimag(exctx->Psi[2]));		
 	
 }
 
@@ -273,15 +278,15 @@ int main ()
 	var = 1. - s13*s13;
 	c13 = sqrt(var);
 	
-	exctx.Psi[0]=c12*c13;
-    exctx.Psi[1]=s12*c13; 
-    exctx.Psi[2]=s13;
+	exctx.Psi[0]=0.+I*0.;
+    exctx.Psi[1]=0.+I*0.; 
+    exctx.Psi[2]=0.+I*0.;
 	exctx.dh=1e-4;
 	exctx.Er=0.;
 	
-	mctx.Psi0[0]=c12*c13;
-    mctx.Psi0[1]=s12*c13; 
-    mctx.Psi0[2]=s13;
+	mctx.Psi0[0]=c12*c13+I*0.;
+    mctx.Psi0[1]=s12*c13+I*0.; 
+    mctx.Psi0[2]=s13+I*0.;
     
     mctx.a = 0.1;
     mctx.b = 1.;
@@ -325,12 +330,58 @@ int main ()
 		{											
 			for(j=0;j<FL;j++)
 			{
-				mctx.WH0W[i][j] =  
+			  mctx.WH0W[i][j] =  
 				 mctx.W[i][0]*mctx.H0W[0][j]-mctx.H0W[i][0]*mctx.W[0][j]
 			    +mctx.W[i][1]*mctx.H0W[1][j]-mctx.H0W[i][1]*mctx.W[1][j]
 			    +mctx.W[i][2]*mctx.H0W[2][j]-mctx.H0W[i][2]*mctx.W[2][j];
 			}
 		}
+		
+		
+		/*//Печать матриц
+		fprintf(stderr,"H0\n");							
+		for(i=0;i<FL;i++){											
+			for(j=0;j<FL;j++){
+				fprintf(stderr,"%lf  ",mctx.H0[i][j]);
+			}
+			fprintf(stderr,"\n");
+		}
+		fprintf(stderr,"\n");
+	    fprintf(stderr,"W\n");	
+		for(i=0;i<FL;i++){
+			for(j=0;j<FL;j++){
+				fprintf(stderr,"%lf  ",mctx.W[i][j]);
+			}
+			fprintf(stderr,"\n");
+		}
+		fprintf(stderr,"\n");
+		fprintf(stderr,"Коммутатор [H0,W] \n");
+		for(i=0;i<FL;i++){
+			for(j=0;j<FL;j++){
+				fprintf(stderr,"%lf  ",mctx.H0W[i][j]);
+			}
+			fprintf(stderr,"\n");
+		}
+		fprintf(stderr,"\n");
+		fprintf(stderr,"Коммутатор [W,[H0,W]] \n");
+		for(i=0;i<FL;i++){
+			for(j=0;j<FL;j++){
+				fprintf(stderr,"%lf  ",mctx.WH0W[i][j]);
+			}
+			fprintf(stderr,"\n");
+		}
+		fprintf(stderr,"\n");															
+		fprintf(stderr,"Коммутатор [H0,[H0,W]] \n");
+		for(i=0;i<FL;i++){
+			for(j=0;j<FL;j++){
+				fprintf(stderr,"%lf  ",mctx.H0H0W[i][j]);
+			}
+			fprintf(stderr,"\n");
+		}
+		fprintf(stderr,"\n");	*/														
+		
+		
+		
 		ME4(&mctx,&exctx);
 		
 		for(i=0;i<FL;i++)
