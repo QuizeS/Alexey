@@ -16,21 +16,21 @@ typedef struct
   double tol, a, b;
   dens vS;
   
-}Mctx;
+}basic_ctx;
 
 typedef struct
 {
   double complex Psi[FL];
   double Er, dh, last;
   
-}Exctx;
+}variative_ctx;
 
 double vS (double); 
 double lambda (double [FL], double, double);
 void prt_matr(double [FL][FL], char *);
 void prt_Cmatr(double complex [FL][FL], char *);
 void prt_Cvect(double complex [FL], char *);
-void ME4(Mctx *,Exctx *); 
+void ME4(basic_ctx *,variative_ctx *); 
 
 int main ()
 {
@@ -43,46 +43,46 @@ int main ()
   s12=0.308; s13=0.0234;
   q1=4.35196e6; q2 =0.030554;
   
-  Mctx mctx;
-  Exctx exctx;
+  basic_ctx basic;
+  variative_ctx vartve;
 
-  mctx.H0[0][0] = 0.; mctx.H0[0][1] = 0.;        mctx.H0[0][2] = 0.;
-  mctx.H0[1][0] = 0.; mctx.H0[1][1] = (q1*q2)/E; mctx.H0[1][2] = 0.;
-  mctx.H0[2][0] = 0.; mctx.H0[2][1] = 0.;        mctx.H0[2][2] = (q1*(1./E));
+  basic.H0[0][0] = 0.; basic.H0[0][1] = 0.;        basic.H0[0][2] = 0.;
+  basic.H0[1][0] = 0.; basic.H0[1][1] = (q1*q2)/E; basic.H0[1][2] = 0.;
+  basic.H0[2][0] = 0.; basic.H0[2][1] = 0.;        basic.H0[2][2] = (q1*(1./E));
 
   var = 1. - s12*s12;
   c12 = sqrt(var);
   var = 1. - s13*s13;
   c13 = sqrt(var);
 
-  exctx.Psi[0]=0.+I*0.;
-  exctx.Psi[1]=0.+I*0.; 
-  exctx.Psi[2]=0.+I*0.;
-  exctx.dh=1e-4;
-  exctx.Er=0.;
+  vartve.Psi[0]=0.+I*0.;
+  vartve.Psi[1]=0.+I*0.; 
+  vartve.Psi[2]=0.+I*0.;
+  vartve.dh=1e-4;
+  vartve.Er=0.;
 
-  mctx.Psi0[0]=c12*c13+I*0.;
-  mctx.Psi0[1]=s12*c13+I*0.; 
-  mctx.Psi0[2]=s13+I*0.;
+  basic.Psi0[0]=c12*c13+I*0.;
+  basic.Psi0[1]=s12*c13+I*0.; 
+  basic.Psi0[2]=s13+I*0.;
 
-  mctx.a = 0.1;
-  mctx.b = 1.;
-  mctx.tol=1e-4;
+  basic.a = 0.1;
+  basic.b = 1.;
+  basic.tol=1e-4;
 
-  mctx.W[0][0] = c13*c13*c12*c12;mctx.W[0][1] = c12*s12*c13*c13; mctx.W[0][2] = c12*c13*s13;
-  mctx.W[1][0] = mctx.W[0][1];   mctx.W[1][1] = s12*s12*c13*c13; mctx.W[1][2] = s12*c13*s13;
-  mctx.W[2][0] = mctx.W[0][2];   mctx.W[2][1] = mctx.W[1][2];    mctx.W[2][2] = s13*s13;
+  basic.W[0][0] = c13*c13*c12*c12;basic.W[0][1] = c12*s12*c13*c13; basic.W[0][2] = c12*c13*s13;
+  basic.W[1][0] = basic.W[0][1];   basic.W[1][1] = s12*s12*c13*c13; basic.W[1][2] = s12*c13*s13;
+  basic.W[2][0] = basic.W[0][2];   basic.W[2][1] = basic.W[1][2];    basic.W[2][2] = s13*s13;
 
-  mctx.vS = vS;
+  basic.vS = vS;
   //Вычисление [H0,W]
   for(i=0;i<FL;i++)
   {
     for(j=0;j<FL;j++)
     {
-      mctx.H0W[i][j] = 
-        mctx.H0[i][0]*mctx.W[0][j]-mctx.W[i][0]*mctx.H0[0][j]
-       +mctx.H0[i][1]*mctx.W[1][j]-mctx.W[i][1]*mctx.H0[1][j]
-       +mctx.H0[i][2]*mctx.W[2][j]-mctx.W[i][2]*mctx.H0[2][j];
+      basic.H0W[i][j] = 
+        basic.H0[i][0]*basic.W[0][j]-basic.W[i][0]*basic.H0[0][j]
+       +basic.H0[i][1]*basic.W[1][j]-basic.W[i][1]*basic.H0[1][j]
+       +basic.H0[i][2]*basic.W[2][j]-basic.W[i][2]*basic.H0[2][j];
     }
   }
   //Вычисление [H0,[H0,W]]
@@ -90,10 +90,10 @@ int main ()
   {
     for(j=0;j<FL;j++)
     {
-      mctx.H0H0W[i][j] =   
-        mctx.H0[i][0]*mctx.H0W[0][j]-mctx.H0W[i][0]*mctx.H0[0][j]
-       +mctx.H0[i][1]*mctx.H0W[1][j]-mctx.H0W[i][1]*mctx.H0[1][j]
-       +mctx.H0[i][2]*mctx.H0W[2][j]-mctx.H0W[i][2]*mctx.H0[2][j];
+      basic.H0H0W[i][j] =   
+        basic.H0[i][0]*basic.H0W[0][j]-basic.H0W[i][0]*basic.H0[0][j]
+       +basic.H0[i][1]*basic.H0W[1][j]-basic.H0W[i][1]*basic.H0[1][j]
+       +basic.H0[i][2]*basic.H0W[2][j]-basic.H0W[i][2]*basic.H0[2][j];
     }
   }
   //Вычисление [W,[H0,W]]
@@ -101,28 +101,28 @@ int main ()
   {
     for(j=0;j<FL;j++)
     {
-      mctx.WH0W[i][j] =  
-        mctx.W[i][0]*mctx.H0W[0][j]-mctx.H0W[i][0]*mctx.W[0][j]
-       +mctx.W[i][1]*mctx.H0W[1][j]-mctx.H0W[i][1]*mctx.W[1][j]
-       +mctx.W[i][2]*mctx.H0W[2][j]-mctx.H0W[i][2]*mctx.W[2][j];
+      basic.WH0W[i][j] =  
+        basic.W[i][0]*basic.H0W[0][j]-basic.H0W[i][0]*basic.W[0][j]
+       +basic.W[i][1]*basic.H0W[1][j]-basic.H0W[i][1]*basic.W[1][j]
+       +basic.W[i][2]*basic.H0W[2][j]-basic.H0W[i][2]*basic.W[2][j];
     }
   }
 
-  ME4(&mctx,&exctx);
+  ME4(&basic,&vartve);
 
   for(i=0;i<FL;i++)
   {
-    sqPsi += exctx.Psi[i]*conj(exctx.Psi[i]);
+    sqPsi += vartve.Psi[i]*conj(vartve.Psi[i]);
   }
-  prt_Cvect(exctx.Psi,"Psi");	
-  prt_matr(mctx.H0,"H0");
+  prt_Cvect(vartve.Psi,"Psi");	
+  prt_matr(basic.H0,"H0");
 
   printf("\n\n#E Prob b 1-|Psi|^2 dh Re(Psi) Im(Psi) \n");
   printf("%lf\t%lf\t%g\t%g\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",
-    E,exctx.last,1.-creal(sqPsi),exctx.dh,
-    creal(exctx.Psi[0]),cimag(exctx.Psi[0]),
-    creal(exctx.Psi[1]),cimag(exctx.Psi[1]),
-    creal(exctx.Psi[2]),cimag(exctx.Psi[2]));
+    E,vartve.last,1.-creal(sqPsi),vartve.dh,
+    creal(vartve.Psi[0]),cimag(vartve.Psi[0]),
+    creal(vartve.Psi[1]),cimag(vartve.Psi[1]),
+    creal(vartve.Psi[2]),cimag(vartve.Psi[2]));
 
 
 return 0;
@@ -187,7 +187,7 @@ void prt_Cvect(complex double vect[FL], char *name)
     printf("#%lf+i(%lf)\n",creal(vect[i]),cimag(vect[i]));
   }
 }
-void ME4(Mctx *mctx, Exctx *exctx)
+void ME4(basic_ctx *basic, variative_ctx *vartve)
 {
   int    i,j;
   double s, ep,em,e, vSep,vSem;
@@ -207,15 +207,15 @@ void ME4(Mctx *mctx, Exctx *exctx)
   unit[1][0]=0.; unit[1][1]=1.; unit[1][2]=0.;
   unit[2][0]=0.; unit[2][1]=0.; unit[2][2]=1.;
   //начало цикла по точкам
-  e = mctx->a;
+  e = basic->a;
 
-  while(e < mctx->b)
+  while(e < basic->b)
   {
-    ep = e+(1.+1./sqrt(3.))*(exctx->dh/2.);
-    em = e+(1.-1./sqrt(3.))*(exctx->dh/2.);
+    ep = e+(1.+1./sqrt(3.))*(vartve->dh/2.);
+    em = e+(1.-1./sqrt(3.))*(vartve->dh/2.);
 
-    vSem = mctx->vS(em);
-    vSep = mctx->vS(ep);
+    vSem = basic->vS(em);
+    vSep = basic->vS(ep);
 
     //вычисление матрицы OMG4  в  точке e_n(кси_n)
     for(i=0;i<FL;i++)
@@ -223,9 +223,9 @@ void ME4(Mctx *mctx, Exctx *exctx)
       for(j=0;j<FL;j++)
       {
         A[i][j] = 
-          ((-1.)*(mctx->H0[i][j]
-         +0.5*(vSep+vSem)*mctx->W[i][j])*exctx->dh*I
-         +(sqrt(3.)/12.)*(vSep-vSem)*mctx->H0W[i][j]*exctx->dh*exctx->dh)*(-1.*I);
+          ((-1.)*(basic->H0[i][j]
+         +0.5*(vSep+vSem)*basic->W[i][j])*vartve->dh*I
+         +(sqrt(3.)/12.)*(vSep-vSem)*basic->H0W[i][j]*vartve->dh*vartve->dh)*(-1.*I);
       }
     }
 
@@ -264,13 +264,13 @@ void ME4(Mctx *mctx, Exctx *exctx)
     var = sqrt(p/3.);
 
     //r0 , r1 для exp(..A)
-    r0 = (-1.)*(2.*sin((var*a*exctx->dh)/2.)*sin((var*a*exctx->dh)/2.)
-        -I*sin(var*a*exctx->dh))/a;
+    r0 = (-1.)*(2.*sin((var*a*vartve->dh)/2.)*sin((var*a*vartve->dh)/2.)
+        -I*sin(var*a*vartve->dh))/a;
 
-    r1 = (-1./(a-b))*((2.*sin((var*a*exctx->dh)/2.)*sin((var*a*exctx->dh)/2.)
-        -I*sin(var*a*exctx->dh))/a
-        -(2.*sin((var*b*exctx->dh)/2.)*sin((var*b*exctx->dh)/2.)
-        -I*sin(var*b*exctx->dh))/b);
+    r1 = (-1./(a-b))*((2.*sin((var*a*vartve->dh)/2.)*sin((var*a*vartve->dh)/2.)
+        -I*sin(var*a*vartve->dh))/a
+        -(2.*sin((var*b*vartve->dh)/2.)*sin((var*b*vartve->dh)/2.)
+        -I*sin(var*b*vartve->dh))/b);
         
     //вычисление exp(OMG04)
     for(i=0;i<FL;i++)
@@ -280,16 +280,16 @@ void ME4(Mctx *mctx, Exctx *exctx)
         exA[i][j] = 
           ((1.-l[0]*(r0-l[1]*r1))*unit[i][j]
           +(1./var)*(r0+l[2]*r1)*A[i][j]
-          +1./(var*var)*r1*sqA[i][j])*exp(var*l[0]*I*exctx->dh);
+          +1./(var*var)*r1*sqA[i][j])*exp(var*l[0]*I*vartve->dh);
       }
     }
     //уравнение эволюции нейтрино в точке en
     for(i=0;i<FL;i++)
     {
-      exctx->Psi[i] = 
-        (exA[i][0]*mctx->Psi0[0]
-        +exA[i][1]*mctx->Psi0[1]
-        +exA[i][2]*mctx->Psi0[2])*exp(exctx->dh*z*I);
+      vartve->Psi[i] = 
+        (exA[i][0]*basic->Psi0[0]
+        +exA[i][1]*basic->Psi0[1]
+        +exA[i][2]*basic->Psi0[2])*exp(vartve->dh*z*I);
     }
     //S1 и S2 понадобятся для расчета величины следующего шага	
     for(i=0;i<FL;i++)
@@ -297,7 +297,7 @@ void ME4(Mctx *mctx, Exctx *exctx)
       for(j=0;j<FL;j++)
       {
         S1[i][j] = 
-          (-sqrt(3.)/12.)*(vSep-vSem)*mctx->H0W[i][j]*exctx->dh;
+          (-sqrt(3.)/12.)*(vSep-vSem)*basic->H0W[i][j]*vartve->dh;
       }
     }
 
@@ -306,8 +306,8 @@ void ME4(Mctx *mctx, Exctx *exctx)
       for(j=0;j<FL;j++)
       {
         S2[i][j] = 
-          (mctx->H0H0W[i][j]
-         +(1./2.)*(vSep+vSem)*mctx->WH0W[i][j])*exctx->dh*(I*sqrt(3.)/24.)*(vSep-vSem);
+          (basic->H0H0W[i][j]
+         +(1./2.)*(vSep+vSem)*basic->WH0W[i][j])*vartve->dh*(I*sqrt(3.)/24.)*(vSep-vSem);
       }
     }
 
@@ -319,7 +319,7 @@ void ME4(Mctx *mctx, Exctx *exctx)
         sqS1[i][j] =
           (S1[i][0]*S1[0][j]
           +S1[i][1]*S1[1][j]
-          +S1[i][2]*S1[2][j])*exctx->dh*exctx->dh;
+          +S1[i][2]*S1[2][j])*vartve->dh*vartve->dh;
       }
     }
     arr[0]=0.+I*0.; 
@@ -331,30 +331,30 @@ void ME4(Mctx *mctx, Exctx *exctx)
       for(j=0;j<FL;j++)
       {
         arr[i] += 
-          (S1[i][j]+exctx->dh*S2[i][j]
-         +(1./2.)*exctx->dh*sqS1[i][j])*exctx->Psi[j]*exctx->dh;
+          (S1[i][j]+vartve->dh*S2[i][j]
+         +(1./2.)*vartve->dh*sqS1[i][j])*vartve->Psi[j]*vartve->dh;
       }
      }
 
-    exctx->Er = 0.;
+    vartve->Er = 0.;
     for(i=0;i<FL;i++)
     {
-      exctx->Er += (double)(arr[i]*conj(arr[i]));
+      vartve->Er += (double)(arr[i]*conj(arr[i]));
     }
 
-    //изменение шага exctx->dh
-    if(exctx->Er >= mctx->tol)
+    //изменение шага vartve->dh
+    if(vartve->Er >= basic->tol)
     {
-      exctx->dh = s*exctx->dh*pow((mctx->tol/exctx->Er),1./3.);
+      vartve->dh = s*vartve->dh*pow((basic->tol/vartve->Er),1./3.);
     }
     else
     {
-      e = e + exctx->dh;
-      mctx->Psi0[0] = exctx->Psi[0];
-      mctx->Psi0[1] = exctx->Psi[1]; 
-      mctx->Psi0[2] = exctx->Psi[2]; 
+      e = e + vartve->dh;
+      basic->Psi0[0] = vartve->Psi[0];
+      basic->Psi0[1] = vartve->Psi[1]; 
+      basic->Psi0[2] = vartve->Psi[2]; 
     }
   }
-  exctx->last = e - exctx->dh;
+  vartve->last = e - vartve->dh;
 
 }
