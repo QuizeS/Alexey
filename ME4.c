@@ -4,8 +4,14 @@
 
 enum
 {
-  FL=3
+  FL=3,
+  NORM,
+  PREV,
+  LAST,
+  OVER
 };
+
+const char *pref = "#"; 
 
 typedef double (*dens)(double);
 
@@ -26,19 +32,20 @@ typedef struct
 }variative_ctx;
 
 double vS (double); 
-double lambda (double [FL], double, double);
+void lambda (double [FL], double, double);
 void prt_matr(double [FL][FL], char *);
 void prt_Cmatr(double complex [FL][FL], char *);
 void prt_Cvect(double complex [FL], char *);
-void ME4(basic_ctx *,variative_ctx *); 
+void ME4(const basic_ctx *,variative_ctx *); 
 
 int main ()
 {
   int i,j;
   double complex sqPsi;
-  double s12, s13, c12, c13, E, q1, q2, var;
+  double s12, s13, c12, c13, E, PSurv, q1, q2, var;
   
   E=7.05;
+  PSurv=0.;
   sqPsi=0.+I*0.;
   s12=0.308; s13=0.0234;
   q1=4.35196e6; q2 =0.030554;
@@ -67,7 +74,7 @@ int main ()
 
   basic.a = 0.1;
   basic.b = 1.;
-  basic.tol=1e-4;
+  basic.tol=1e-3;
 
   basic.W[0][0] = c13*c13*c12*c12;basic.W[0][1] = c12*s12*c13*c13; basic.W[0][2] = c12*c13*s13;
   basic.W[1][0] = basic.W[0][1];   basic.W[1][1] = s12*s12*c13*c13; basic.W[1][2] = s12*c13*s13;
@@ -107,9 +114,15 @@ int main ()
        +basic.W[i][2]*basic.H0W[2][j]-basic.H0W[i][2]*basic.W[2][j];
     }
   }
-
+  printf("%s a = %e\n%s b = %e\n%s tol = %e\n%s dh = %e\n",
+    pref,basic.a,pref,basic.b,pref,basic.tol,pref,vartve.dh);
+  
   ME4(&basic,&vartve);
-
+  
+  PSurv = c12*c12*c13*c13*(vartve.Psi[0]*conj(vartve.Psi[0]))
+         +s12*s12*c13*c13*(vartve.Psi[1]*conj(vartve.Psi[1]))
+         +s13*s13*(vartve.Psi[2]*conj(vartve.Psi[2]));
+  
   for(i=0;i<FL;i++)
   {
     sqPsi += vartve.Psi[i]*conj(vartve.Psi[i]);
@@ -117,9 +130,9 @@ int main ()
   prt_Cvect(vartve.Psi,"Psi");	
   prt_matr(basic.H0,"H0");
 
-  printf("\n\n#E Prob b 1-|Psi|^2 dh Re(Psi) Im(Psi) \n");
-  printf("%lf\t%lf\t%g\t%g\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",
-    E,vartve.last,1.-creal(sqPsi),vartve.dh,
+  printf("\n\n#E ProbSurv b 1-|Psi|^2 dh Re(Psi) Im(Psi) \n");
+  printf("%lf\t%g\t%g\t%g\t%g\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",
+    E,PSurv,vartve.last,1.-creal(sqPsi),vartve.dh,
     creal(vartve.Psi[0]),cimag(vartve.Psi[0]),
     creal(vartve.Psi[1]),cimag(vartve.Psi[1]),
     creal(vartve.Psi[2]),cimag(vartve.Psi[2]));
@@ -132,7 +145,7 @@ double vS (double e)
 {
   return 6.5956e4*exp(-10.54*e);
 }
-double lambda (double l[FL], double q, double p)
+void lambda (double l[FL], double q, double p)
 {
   int i,j;
   double var;
@@ -141,27 +154,26 @@ double lambda (double l[FL], double q, double p)
   l[0] = 2.*cos((1./3.)*acos((3.*q/(2.*p))*sqrt(3./p))-(2.*M_PI*2.)/3.);
   
   for( i=0; i < FL; i++) 
-    {
-      for( j = FL-1; j > i; j-- )
-      {     
-        if( l[j-1] > l[j] ) 
-        {
-          var = l[j]; l[j] = l[j-1]; l[j-1] = var;
-        }
+  {
+    for( j = FL-1; j > i; j-- )
+    {     
+      if( l[j-1] > l[j] ) 
+      {
+        var = l[j]; l[j] = l[j-1]; l[j-1] = var;
       }
     }
-return *l;    
+  }   
 }
 void prt_matr(double matr[FL][FL], char *name)
 {
   int i,j;
-  printf("\n#%s",name);
+  printf("%s %s = ",pref,name);
   for(i=0;i<FL;i++)
   {
-    printf("\n#");
+    printf("\n%s\t",pref);
     for(j=0;j<FL;j++)
     {
-      printf("%lf",matr[i][j]);
+      printf(" %e",matr[i][j]);
     }
   }
 }
@@ -171,7 +183,7 @@ void prt_Cmatr(complex double matr[FL][FL], char *name)
   printf("\n#%s",name);
   for(i=0;i<FL;i++)
   {
-    printf("\n#");		
+    printf("\n%s\t",pref);		
     for(j=0;j<FL;j++)
     {
       printf("%lf+i(%lf)",creal(matr[i][j]),cimag(matr[i][j]));
@@ -181,25 +193,30 @@ void prt_Cmatr(complex double matr[FL][FL], char *name)
 void prt_Cvect(complex double vect[FL], char *name)
 {
   int i;
-  printf("\n#%s\n",name);
+  printf("%s %s = \n",pref,name);
   for(i=0;i<FL;i++)
   {
-    printf("#%lf+i(%lf)\n",creal(vect[i]),cimag(vect[i]));
+    printf("%s\t%e+i(%e)\n",pref,creal(vect[i]),cimag(vect[i]));
   }
 }
-void ME4(basic_ctx *basic, variative_ctx *vartve)
+void ME4(const basic_ctx *basic, variative_ctx *vartve)
 {
-  int    i,j;
+  int    i,j, index;
   double s, ep,em,e, vSep,vSem;
   double complex r0, r1;
   double l[FL],q,p,z,a,b;
   double var;
   double complex A[FL][FL],sqA[FL][FL],unit[FL][FL],exA[FL][FL];
-  double complex S1[FL][FL],S2[FL][FL],sqS1[FL][FL],arr[FL];
+  double complex S1[FL][FL],S2[FL][FL],sqS1[FL][FL],arr[FL],Psi[FL];
   
+  index=NORM;
   s=0.8;
   ep=0.; em=0.; e=0.;
   r0=0.+0.*I; r1=0.+0.*I;
+  
+  Psi[0]=basic->Psi0[0];
+  Psi[1]=basic->Psi0[1];
+  Psi[2]=basic->Psi0[2];
   
   arr[0]=0.; arr[1]=0.; arr[2]=0.;
 
@@ -209,8 +226,8 @@ void ME4(basic_ctx *basic, variative_ctx *vartve)
   //начало цикла по точкам
   e = basic->a;
 
-  while(e < basic->b)
-  {
+  while(index != OVER)
+  { 
     ep = e+(1.+1./sqrt(3.))*(vartve->dh/2.);
     em = e+(1.-1./sqrt(3.))*(vartve->dh/2.);
 
@@ -287,9 +304,9 @@ void ME4(basic_ctx *basic, variative_ctx *vartve)
     for(i=0;i<FL;i++)
     {
       vartve->Psi[i] = 
-        (exA[i][0]*basic->Psi0[0]
-        +exA[i][1]*basic->Psi0[1]
-        +exA[i][2]*basic->Psi0[2])*exp(vartve->dh*z*I);
+        (exA[i][0]*Psi[0]
+        +exA[i][1]*Psi[1]
+        +exA[i][2]*Psi[2])*exp(vartve->dh*z*I);
     }
     //S1 и S2 понадобятся для расчета величины следующего шага	
     for(i=0;i<FL;i++)
@@ -341,7 +358,7 @@ void ME4(basic_ctx *basic, variative_ctx *vartve)
     {
       vartve->Er += (double)(arr[i]*conj(arr[i]));
     }
-
+	
     //изменение шага vartve->dh
     if(vartve->Er >= basic->tol)
     {
@@ -350,11 +367,24 @@ void ME4(basic_ctx *basic, variative_ctx *vartve)
     else
     {
       e = e + vartve->dh;
-      basic->Psi0[0] = vartve->Psi[0];
-      basic->Psi0[1] = vartve->Psi[1]; 
-      basic->Psi0[2] = vartve->Psi[2]; 
+      Psi[0] = vartve->Psi[0];
+      Psi[1] = vartve->Psi[1]; 
+      Psi[2] = vartve->Psi[2];
+      
+      if(LAST == index)
+      {
+        index = OVER;
+      }
+      if(index == PREV)
+      {
+        index = LAST;
+      }
+      if((e+2.*vartve->dh)>1. && index != LAST && index != OVER)
+      {
+        index = PREV;
+        vartve->dh = (1.-e)/2.;
+      }
     }
   }
-  vartve->last = e - vartve->dh;
-
+  vartve->last=e;  
 }
