@@ -42,12 +42,13 @@ int main ()
 {
   int i,j;
   double complex sqPsi;
-  double s12, s13, c12, c13, E, PSurv, q1, q2, var;
-  
+  double s12, s13, c12, c13, E, PSurv, q1, q2;
+
   E=7.05;
   PSurv=0.;
   sqPsi=0.+I*0.;
-  s12=0.308; s13=0.0234;
+  s12=(sqrt(0.308)); s13=(sqrt(0.0234));
+  c12=(sqrt(1. - 0.308)); c13=(sqrt(1. - 0.0234));
   q1=4.35196e6; q2 =0.030554;
   
   basic_ctx basic;
@@ -56,12 +57,7 @@ int main ()
   basic.H0[0][0] = 0.; basic.H0[0][1] = 0.;        basic.H0[0][2] = 0.;
   basic.H0[1][0] = 0.; basic.H0[1][1] = (q1*q2)/E; basic.H0[1][2] = 0.;
   basic.H0[2][0] = 0.; basic.H0[2][1] = 0.;        basic.H0[2][2] = (q1*(1./E));
-
-  var = 1. - s12*s12;
-  c12 = sqrt(var);
-  var = 1. - s13*s13;
-  c13 = sqrt(var);
-
+  
   vartve.Psi[0]=0.+I*0.;
   vartve.Psi[1]=0.+I*0.; 
   vartve.Psi[2]=0.+I*0.;
