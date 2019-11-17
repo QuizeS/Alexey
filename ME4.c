@@ -31,6 +31,7 @@ typedef struct
   
 }variative_ctx;
 
+double atof (const char *str); 
 double vS (double); 
 void lambda (double [FL], double, double);
 void prt_matr(double [FL][FL], char *);
@@ -38,17 +39,17 @@ void prt_Cmatr(double complex [FL][FL], char *);
 void prt_Cvect(double complex [FL], char *);
 void ME4(const basic_ctx *,variative_ctx *); 
 
-int main ()
+int main (int argc, char* argv[])
 {
   int i,j;
   double complex sqPsi;
   double s12, s13, c12, c13, E, PSurv, q1, q2;
 
-  E=7.05;
+  E=atof(argv[1]);
   PSurv=0.;
   sqPsi=0.+I*0.;
-  s12=(sqrt(0.308)); s13=(sqrt(0.0234));
-  c12=(sqrt(1. - 0.308)); c13=(sqrt(1. - 0.0234));
+  s12=fabs(sqrt(0.308)); s13=fabs(sqrt(0.0234));
+  c12=fabs(sqrt(1. - 0.308)); c13=fabs(sqrt(1. - 0.0234));
   q1=4.35196e6; q2 =0.030554;
   
   basic_ctx basic;
@@ -56,7 +57,7 @@ int main ()
 
   basic.H0[0][0] = 0.; basic.H0[0][1] = 0.;        basic.H0[0][2] = 0.;
   basic.H0[1][0] = 0.; basic.H0[1][1] = (q1*q2)/E; basic.H0[1][2] = 0.;
-  basic.H0[2][0] = 0.; basic.H0[2][1] = 0.;        basic.H0[2][2] = (q1*(1./E));
+  basic.H0[2][0] = 0.; basic.H0[2][1] = 0.;        basic.H0[2][2] = q1/E;
   
   vartve.Psi[0]=0.+I*0.;
   vartve.Psi[1]=0.+I*0.; 
@@ -68,11 +69,11 @@ int main ()
   basic.Psi0[1]=s12*c13+I*0.; 
   basic.Psi0[2]=s13+I*0.;
 
-  basic.a = 0.1;
-  basic.b = 1.;
-  basic.tol=1e-3;
+  basic.tol = atof(argv[2]);//e-4
+  basic.a = atof(argv[3]);//0.1
+  basic.b = atof(argv[4]);//1
 
-  basic.W[0][0] = c13*c13*c12*c12;basic.W[0][1] = c12*s12*c13*c13; basic.W[0][2] = c12*c13*s13;
+  basic.W[0][0] = c13*c13*c12*c12; basic.W[0][1] = c12*s12*c13*c13; basic.W[0][2] = c12*c13*s13;
   basic.W[1][0] = basic.W[0][1];   basic.W[1][1] = s12*s12*c13*c13; basic.W[1][2] = s12*c13*s13;
   basic.W[2][0] = basic.W[0][2];   basic.W[2][1] = basic.W[1][2];    basic.W[2][2] = s13*s13;
 
@@ -110,8 +111,22 @@ int main ()
        +basic.W[i][2]*basic.H0W[2][j]-basic.H0W[i][2]*basic.W[2][j];
     }
   }
-  printf("%s a = %e\n%s b = %e\n%s tol = %e\n%s dh = %e\n",
-    pref,basic.a,pref,basic.b,pref,basic.tol,pref,vartve.dh);
+  printf("# model:sun\n# model parameters:\t%lf\t%lf\n",65956.000,-10.540);
+  printf("%s a = %e\n%s b = %e\n%s tol = %e\n%s E=%e\n%s dh = %e\n",
+    pref,basic.a,pref,basic.b,pref,basic.tol,pref,E,pref,vartve.dh);
+  printf("%s s12 = %e\n%s s13 = %e\n%s s12^2 = %e\n%s s13^2 = %e\n",
+    pref,s12,pref,s13,pref,0.308,pref,0.0234);
+  prt_Cvect(basic.Psi0,"Psi0");	
+  prt_matr(basic.H0,"H0");
+  prt_matr(basic.W,"W");
+  prt_matr(basic.H0W,"H0W");
+  prt_matr(basic.H0H0W,"H0H0W");
+  prt_matr(basic.WH0W,"WH0W");
+  printf("\n");
+  printf("#################################################\n");
+  printf("##            CALCULATION COMPLETED            ##\n");
+  printf("#################################################\n");
+  prt_Cvect(vartve.Psi,"Psi");
   
   ME4(&basic,&vartve);
   
@@ -123,15 +138,9 @@ int main ()
   {
     sqPsi += vartve.Psi[i]*conj(vartve.Psi[i]);
   }
-  prt_Cvect(vartve.Psi,"Psi");	
-  prt_matr(basic.H0,"H0");
 
-  printf("\n\n#E ProbSurv b 1-|Psi|^2 dh Re(Psi) Im(Psi) \n");
-  printf("%lf\t%g\t%g\t%g\t%g\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",
-    E,PSurv,vartve.last,1.-creal(sqPsi),vartve.dh,
-    creal(vartve.Psi[0]),cimag(vartve.Psi[0]),
-    creal(vartve.Psi[1]),cimag(vartve.Psi[1]),
-    creal(vartve.Psi[2]),cimag(vartve.Psi[2]));
+  printf("#ProbSurv b 1-|Psi|^2 dh(last)\n");
+  printf("%g\t%g\t%g\t%g\n",PSurv,vartve.last,1.-creal(sqPsi),vartve.dh);
 
 
 return 0;
@@ -139,7 +148,7 @@ return 0;
 
 double vS (double e)
 {
-  return 6.5956e4*exp(-10.54*e);
+  return 65956.*exp(-10.54*e);
 }
 void lambda (double l[FL], double q, double p)
 {
@@ -172,6 +181,7 @@ void prt_matr(double matr[FL][FL], char *name)
       printf(" %e",matr[i][j]);
     }
   }
+  printf("\n");
 }
 void prt_Cmatr(complex double matr[FL][FL], char *name)
 {
@@ -236,9 +246,9 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
       for(j=0;j<FL;j++)
       {
         A[i][j] = 
-          ((-1.)*(basic->H0[i][j]
-         +0.5*(vSep+vSem)*basic->W[i][j])*vartve->dh*I
-         +(sqrt(3.)/12.)*(vSep-vSem)*basic->H0W[i][j]*vartve->dh*vartve->dh)*(-1.*I);
+          -(basic->H0[i][j]
+         +(1./2.)*(vSep+vSem)*basic->W[i][j])
+         -I*(sqrt(3.)/12.)*(vSep-vSem)*basic->H0W[i][j]*vartve->dh;
       }
     }
 
@@ -280,11 +290,11 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
     r0 = (-1.)*(2.*sin((var*a*vartve->dh)/2.)*sin((var*a*vartve->dh)/2.)
         -I*sin(var*a*vartve->dh))/a;
 
-    r1 = (-1./(a-b))*((2.*sin((var*a*vartve->dh)/2.)*sin((var*a*vartve->dh)/2.)
+    r1 = (1./(b-a))*((2.*sin((var*a*vartve->dh)/2.)*sin((var*a*vartve->dh)/2.)
         -I*sin(var*a*vartve->dh))/a
         -(2.*sin((var*b*vartve->dh)/2.)*sin((var*b*vartve->dh)/2.)
         -I*sin(var*b*vartve->dh))/b);
-        
+
     //вычисление exp(OMG04)
     for(i=0;i<FL;i++)
     {
