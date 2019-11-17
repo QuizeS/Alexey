@@ -126,7 +126,6 @@ int main (int argc, char* argv[])
   printf("#################################################\n");
   printf("##            CALCULATION COMPLETED            ##\n");
   printf("#################################################\n");
-  prt_Cvect(vartve.Psi,"Psi");
   
   ME4(&basic,&vartve);
   
@@ -138,7 +137,7 @@ int main (int argc, char* argv[])
   {
     sqPsi += vartve.Psi[i]*conj(vartve.Psi[i]);
   }
-
+  prt_Cvect(vartve.Psi,"Psi");
   printf("#ProbSurv b 1-|Psi|^2 dh(last)\n");
   printf("%g\t%g\t%g\t%g\n",PSurv,vartve.last,1.-creal(sqPsi),vartve.dh);
 
