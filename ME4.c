@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <complex.h> 
+#include <stdlib.h>
+#include <string.h>
 
 enum
 {
@@ -8,12 +10,41 @@ enum
   NORM,
   PREV,
   LAST,
-  OVER
+  OVER,
+  PARAM_NAME=16,
+  FNAME=256
+};
+
+enum  tag_type 
+{
+  FLOAT,
+  COMPLEX,
+  STRING
+};
+//printf->fprintf
+enum
+{
+  P_A=0,P_B,P_E,P_TOL,
+  P_S12,P_S13,P_PSI0,
+  P_H,P_OUT,P_MODEL,P_TOTAL
 };
 
 const char *pref = "#"; 
 
 typedef double (*dens)(double);
+
+typedef struct
+{
+  enum tag_type type;
+  char name[PARAM_NAME];
+  union
+  {
+    double v;
+    complex double c[FL];
+    char n[FNAME];
+  } val;
+
+} param;
 
 typedef struct 
 {
@@ -22,16 +53,18 @@ typedef struct
   double tol, a, b;
   dens vS;
   
-}basic_ctx;
+} basic_ctx;
 
 typedef struct
 {
   double complex Psi[FL];
-  double Er, dh, last;
+  double Er, dh, last, prev;
+  int calls;
   
-}variative_ctx;
+} variative_ctx;
 
-double atof (const char *str); 
+void initparam (param*);
+void prtparam (param*);
 double vS (double); 
 void lambda (double [FL], double, double);
 void prt_matr(double [FL][FL], char *);
@@ -44,12 +77,16 @@ int main (int argc, char* argv[])
   int i,j;
   double complex sqPsi;
   double s12, s13, c12, c13, E, PSurv, q1, q2;
-
+  param params[P_TOTAL];
+  
+  initparam(params);
+  prtparam(params);
+  
   E=atof(argv[1]);
   PSurv=0.;
   sqPsi=0.+I*0.;
-  s12=fabs(sqrt(0.308)); s13=fabs(sqrt(0.0234));
-  c12=fabs(sqrt(1. - 0.308)); c13=fabs(sqrt(1. - 0.0234));
+  s12=sqrt(0.308); s13=sqrt(0.0234);
+  c12=sqrt(1. - 0.308); c13=sqrt(1. - 0.0234);
   q1=4.35196e6; q2 =0.030554;
   
   basic_ctx basic;
@@ -58,26 +95,29 @@ int main (int argc, char* argv[])
   basic.H0[0][0] = 0.; basic.H0[0][1] = 0.;        basic.H0[0][2] = 0.;
   basic.H0[1][0] = 0.; basic.H0[1][1] = (q1*q2)/E; basic.H0[1][2] = 0.;
   basic.H0[2][0] = 0.; basic.H0[2][1] = 0.;        basic.H0[2][2] = q1/E;
-  
-  vartve.Psi[0]=0.+I*0.;
-  vartve.Psi[1]=0.+I*0.; 
-  vartve.Psi[2]=0.+I*0.;
-  vartve.dh=1e-4;
-  vartve.Er=0.;
-
-  basic.Psi0[0]=c12*c13+I*0.;
-  basic.Psi0[1]=s12*c13+I*0.; 
-  basic.Psi0[2]=s13+I*0.;
 
   basic.tol = atof(argv[2]);//e-4
   basic.a = atof(argv[3]);//0.1
   basic.b = atof(argv[4]);//1
+  
+  basic.Psi0[0]=c12*c13+I*0.;
+  basic.Psi0[1]=s12*c13+I*0.; 
+  basic.Psi0[2]=s13+I*0.;
 
   basic.W[0][0] = c13*c13*c12*c12; basic.W[0][1] = c12*s12*c13*c13; basic.W[0][2] = c12*c13*s13;
   basic.W[1][0] = basic.W[0][1];   basic.W[1][1] = s12*s12*c13*c13; basic.W[1][2] = s12*c13*s13;
   basic.W[2][0] = basic.W[0][2];   basic.W[2][1] = basic.W[1][2];    basic.W[2][2] = s13*s13;
 
   basic.vS = vS;
+
+  vartve.Psi[0]=0.+I*0.;
+  vartve.Psi[1]=0.+I*0.; 
+  vartve.Psi[2]=0.+I*0.;
+  vartve.dh=(basic.tol)/10.;
+  vartve.Er=0.;
+  vartve.calls=0;
+  vartve.prev=0.;
+
   //Вычисление [H0,W]
   for(i=0;i<FL;i++)
   {
@@ -112,7 +152,7 @@ int main (int argc, char* argv[])
     }
   }
   printf("# model:sun\n# model parameters:\t%lf\t%lf\n",65956.000,-10.540);
-  printf("%s a = %e\n%s b = %e\n%s tol = %e\n%s E=%e\n%s dh = %e\n",
+  printf("%s a = %e\n%s b = %e\n%s tol = %e\n%s E = %e\n%s dh = %e\n",
     pref,basic.a,pref,basic.b,pref,basic.tol,pref,E,pref,vartve.dh);
   printf("%s s12 = %e\n%s s13 = %e\n%s s12^2 = %e\n%s s13^2 = %e\n",
     pref,s12,pref,s13,pref,0.308,pref,0.0234);
@@ -126,6 +166,7 @@ int main (int argc, char* argv[])
   printf("#################################################\n");
   printf("##            CALCULATION COMPLETED            ##\n");
   printf("#################################################\n");
+  printf("\n");
   
   ME4(&basic,&vartve);
   
@@ -137,14 +178,94 @@ int main (int argc, char* argv[])
   {
     sqPsi += vartve.Psi[i]*conj(vartve.Psi[i]);
   }
+  printf("# Psi[0]^2 = %lf + I%lf\n",
+    creal(vartve.Psi[0]*conj(vartve.Psi[0])),cimag(vartve.Psi[0]*conj(vartve.Psi[0])));
+  printf("# Psi[1]^2 = %lf + I%lf\n",
+    creal(vartve.Psi[1]*conj(vartve.Psi[1])),cimag(vartve.Psi[1]*conj(vartve.Psi[1])));
+  printf("# Psi[2]^2 = %lf + I%lf\n",
+    creal((vartve.Psi[2])*conj(vartve.Psi[2])),cimag(vartve.Psi[2]*conj(vartve.Psi[2])));
+  
+  printf("\n");
+  
+  printf("# phi0 = %lf \n",atan2(creal(vartve.Psi[0]),cimag(vartve.Psi[0])));
+  printf("# phi1 = %lf \n",atan2(creal(vartve.Psi[1]),cimag(vartve.Psi[1])));
+  printf("# phi2 = %lf \n",atan2(creal(vartve.Psi[2]),cimag(vartve.Psi[2])));
+  
+  printf("\n");
+  
   prt_Cvect(vartve.Psi,"Psi");
-  printf("#ProbSurv b 1-|Psi|^2 dh(last)\n");
-  printf("%g\t%g\t%g\t%g\n",PSurv,vartve.last,1.-creal(sqPsi),vartve.dh);
+  printf("#ProbSurv b 1-|Psi|^2 dh(last) dh(prev) calls\n");
+  printf("%10.8g\t%g\t%g\t%g\t%g\t%d\n",
+    PSurv,vartve.last,1.-creal(sqPsi),vartve.dh,vartve.prev,vartve.calls);
 
 
 return 0;
 }
 
+void initparam (param *par)
+{
+  double c12,c13,s12,s13;
+  par[P_A].type = FLOAT; 
+  strncpy(par[P_A].name,"a",PARAM_NAME-1);   
+  par[P_A].val.v = 0.1;
+    
+  par[P_E].type = FLOAT;
+  strncpy(par[P_E].name,"E",PARAM_NAME-1); 
+  par[P_E].val.v = 7.05;
+  
+  par[P_B].type = FLOAT; 
+  strncpy(par[P_B].name,"b",PARAM_NAME-1);    
+  par[P_B].val.v = 1.0;  
+  
+  par[P_TOL].type = FLOAT;
+  strncpy(par[P_TOL].name,"tol",PARAM_NAME-1); 
+  par[P_TOL].val.v = 1e-4;
+  
+  par[P_S12].type = FLOAT;        
+  strncpy(par[P_S12].name,"s12",PARAM_NAME-1);         
+  par[P_S12].val.v = sqrt(0.308); 
+  
+  par[P_S13].type = FLOAT;
+  strncpy(par[P_S13].name,"s13",PARAM_NAME-1); 
+  par[P_S13].val.v = sqrt(0.0234);
+  
+  par[P_PSI0].type = COMPLEX;
+  strncpy(par[P_PSI0].name,"psi0",PARAM_NAME-1);
+  s12=sqrt(0.308); s13=sqrt(0.0234);
+  c12=sqrt(1. - 0.308); c13=sqrt(1. - 0.0234); 
+  par[P_PSI0].val.c[0] = c12*c13+I*0.;
+  par[P_PSI0].val.c[1] = s12*c13+I*0.; 
+  par[P_PSI0].val.c[2] = s13+I*0.;
+  
+  par[P_H].type = FLOAT;
+  strncpy(par[P_H].name,"dh",PARAM_NAME-1); 
+  par[P_H].val.v = par[P_TOL].val.v;
+  
+  par[P_OUT].type = STRING;
+  strncpy(par[P_OUT].name,"out",PARAM_NAME-1); 
+  strncpy(par[P_OUT].val.n,"SCREEN",FNAME-1);
+  
+  par[P_MODEL].type = STRING;
+  strncpy(par[P_MODEL].name,"model",PARAM_NAME-1); 
+  strncpy(par[P_MODEL].val.n,"sun",FNAME-1);
+}
+void prtparam(param *par)
+{ 
+  for(int i=0;i<P_TOTAL;i++)
+  { 
+    if(par[i].type == FLOAT)
+      printf("%s %s = %lf\n",pref,par[i].name,par[i].val.v);
+    if(par[i].type == COMPLEX)
+      printf("%s %s = %lf + I%lf\t%lf + I%lf\t%lf + I%lf\n",
+        pref,par[i].name,
+        creal(par[i].val.c[0]), cimag(par[i].val.c[0]),
+        creal(par[i].val.c[1]), cimag(par[i].val.c[1]),
+        creal(par[i].val.c[2]), cimag(par[i].val.c[2]));
+        
+    if(par[i].type == STRING)
+      printf("%s %s = %s\n",pref,par[i].name,par[i].val.n);  
+  }
+}
 double vS (double e)
 {
   return 65956.*exp(-10.54*e);
@@ -368,6 +489,7 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
     if(vartve->Er >= basic->tol)
     {
       vartve->dh = s*vartve->dh*pow((basic->tol/vartve->Er),1./3.);
+      fprintf(stderr,"#!!!Изменение шага dh = %lf!!!\n",vartve->dh);
     }
     else
     {
@@ -387,9 +509,12 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
       if((e+2.*vartve->dh)>1. && index != LAST && index != OVER)
       {
         index = PREV;
+        vartve->prev = vartve->dh;
         vartve->dh = (1.-e)/2.;
+        fprintf(stderr,"#!!! if Изменение шага dh = %lf!!!\n",vartve->dh);
       }
     }
+    vartve->calls++;
   }
   vartve->last=e;  
 }
