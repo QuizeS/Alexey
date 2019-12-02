@@ -3,6 +3,34 @@
 #include <complex.h> 
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
+#include <unistd.h>
+#include <poll.h>
+
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
+
+enum ecodes
+{
+  SUCCESS = 0,
+  ERR_NOCONF,
+  ERR_LUA,
+  ERR_INCORRECT_VALUE,
+  ERR_MODEL_NAME,
+  ERR_TOO_LONG,
+  ERR_WRONG_VAL
+};
+
+enum aux_param
+{
+  FLAVS         =    3,
+  PAR_MAX_WIDTH =    6,
+  MAX_LEN       =  255,
+  MAX_READ_LEN  = 1024,
+  MAX_BUF_SIZE  = 4096
+};
 
 enum
 {
@@ -21,7 +49,7 @@ enum  tag_type
   COMPLEX,
   STRING
 };
-//printf->fprintf
+
 enum
 {
   P_A=0,P_B,P_E,P_TOL,
@@ -30,6 +58,7 @@ enum
 };
 
 const char *pref = "#"; 
+char prog_name[MAX_LEN + 1];
 
 typedef double (*dens)(double);
 
@@ -64,12 +93,15 @@ typedef struct
 } variative_ctx;
 
 void initparam (param*);
-void prtparam (param*);
+void prtparam (param*,FILE*);
+bool get_params(char *,param *,bool );//
+bool chkin_poll(void);
+bool process_cmd_line(int , char **, param *);
 double vS (double); 
 void lambda (double [FL], double, double);
-void prt_matr(double [FL][FL], char *);
-void prt_Cmatr(double complex [FL][FL], char *);
-void prt_Cvect(double complex [FL], char *);
+void prt_matr(double [FL][FL], char *,FILE*);
+void prt_Cmatr(double complex [FL][FL], char *,FILE*);
+void prt_Cvect(double complex [FL], char *,FILE*);
 void ME4(const basic_ctx *,variative_ctx *); 
 
 int main (int argc, char* argv[])
@@ -78,15 +110,48 @@ int main (int argc, char* argv[])
   double complex sqPsi;
   double s12, s13, c12, c13, E, PSurv, q1, q2;
   param params[P_TOTAL];
+  FILE *out;
+  
+  {
+    char *slash;
+    slash = strrchr(argv[0], '/');
+
+    if( NULL == slash )
+    {
+      strncpy(prog_name, argv[0], MAX_LEN);
+    }
+    else
+    {
+      strncpy(prog_name, slash + 1, MAX_LEN);
+    }
+    prog_name[MAX_LEN] = '\0';
+  }
   
   initparam(params);
-  prtparam(params);
   
-  E=atof(argv[1]);
+  bool psi0_changed = false;
+  
+  prtparam(params,stderr);
+  
+  psi0_changed = process_cmd_line(argc, argv, params);
+  
+  prtparam(params,stderr);
+  
+  if(0 == strncmp(params[P_OUT].val.n,"SCREEN",FNAME))
+  {
+     out = stdout;
+  }
+  else
+  {
+    out = fopen(params[P_OUT].val.n,"w+");
+  }
+  prtparam(params,out);
+  
+  E=params[P_E].val.v;
   PSurv=0.;
   sqPsi=0.+I*0.;
-  s12=sqrt(0.308); s13=sqrt(0.0234);
-  c12=sqrt(1. - 0.308); c13=sqrt(1. - 0.0234);
+  s12=params[P_S12].val.v; s13=params[P_S13].val.v;
+  c12=sqrt(1. - s12*s12); c13=sqrt(1. - s13*s13);
   q1=4.35196e6; q2 =0.030554;
   
   basic_ctx basic;
@@ -96,13 +161,13 @@ int main (int argc, char* argv[])
   basic.H0[1][0] = 0.; basic.H0[1][1] = (q1*q2)/E; basic.H0[1][2] = 0.;
   basic.H0[2][0] = 0.; basic.H0[2][1] = 0.;        basic.H0[2][2] = q1/E;
 
-  basic.tol = atof(argv[2]);//e-4
-  basic.a = atof(argv[3]);//0.1
-  basic.b = atof(argv[4]);//1
+  basic.tol = params[P_TOL].val.v;//e-4
+  basic.a = params[P_A].val.v;//0.1
+  basic.b = params[P_B].val.v;//1
   
-  basic.Psi0[0]=c12*c13+I*0.;
-  basic.Psi0[1]=s12*c13+I*0.; 
-  basic.Psi0[2]=s13+I*0.;
+  basic.Psi0[0] = params[P_PSI0].val.c[0]; 
+  basic.Psi0[1] = params[P_PSI0].val.c[1]; 
+  basic.Psi0[2] = params[P_PSI0].val.c[2];
 
   basic.W[0][0] = c13*c13*c12*c12; basic.W[0][1] = c12*s12*c13*c13; basic.W[0][2] = c12*c13*s13;
   basic.W[1][0] = basic.W[0][1];   basic.W[1][1] = s12*s12*c13*c13; basic.W[1][2] = s12*c13*s13;
@@ -151,22 +216,22 @@ int main (int argc, char* argv[])
        +basic.W[i][2]*basic.H0W[2][j]-basic.H0W[i][2]*basic.W[2][j];
     }
   }
-  printf("# model:sun\n# model parameters:\t%lf\t%lf\n",65956.000,-10.540);
-  printf("%s a = %e\n%s b = %e\n%s tol = %e\n%s E = %e\n%s dh = %e\n",
+  fprintf(out,"# model:sun\n# model parameters:\t%lf\t%lf\n",65956.000,-10.540);
+  fprintf(out,"%s a = %e\n%s b = %e\n%s tol = %e\n%s E = %e\n%s dh = %e\n",
     pref,basic.a,pref,basic.b,pref,basic.tol,pref,E,pref,vartve.dh);
-  printf("%s s12 = %e\n%s s13 = %e\n%s s12^2 = %e\n%s s13^2 = %e\n",
+  fprintf(out,"%s s12 = %e\n%s s13 = %e\n%s s12^2 = %e\n%s s13^2 = %e\n",
     pref,s12,pref,s13,pref,0.308,pref,0.0234);
-  prt_Cvect(basic.Psi0,"Psi0");	
-  prt_matr(basic.H0,"H0");
-  prt_matr(basic.W,"W");
-  prt_matr(basic.H0W,"H0W");
-  prt_matr(basic.H0H0W,"H0H0W");
-  prt_matr(basic.WH0W,"WH0W");
-  printf("\n");
-  printf("#################################################\n");
-  printf("##            CALCULATION COMPLETED            ##\n");
-  printf("#################################################\n");
-  printf("\n");
+  prt_Cvect(basic.Psi0,"Psi0",out);	
+  prt_matr(basic.H0,"H0",out);
+  prt_matr(basic.W,"W",out);
+  prt_matr(basic.H0W,"H0W",out);
+  prt_matr(basic.H0H0W,"H0H0W",out);
+  prt_matr(basic.WH0W,"WH0W",out);
+  fprintf(out,"\n");
+  fprintf(out,"#################################################\n");
+  fprintf(out,"##            CALCULATION COMPLETED            ##\n");
+  fprintf(out,"#################################################\n");
+  fprintf(out,"\n");
   
   ME4(&basic,&vartve);
   
@@ -178,30 +243,287 @@ int main (int argc, char* argv[])
   {
     sqPsi += vartve.Psi[i]*conj(vartve.Psi[i]);
   }
-  printf("# Psi[0]^2 = %lf + I%lf\n",
+  fprintf(out,"# Psi[0]^2 = %lf + I%lf\n",
     creal(vartve.Psi[0]*conj(vartve.Psi[0])),cimag(vartve.Psi[0]*conj(vartve.Psi[0])));
-  printf("# Psi[1]^2 = %lf + I%lf\n",
+  fprintf(out,"# Psi[1]^2 = %lf + I%lf\n",
     creal(vartve.Psi[1]*conj(vartve.Psi[1])),cimag(vartve.Psi[1]*conj(vartve.Psi[1])));
-  printf("# Psi[2]^2 = %lf + I%lf\n",
+  fprintf(out,"# Psi[2]^2 = %lf + I%lf\n",
     creal((vartve.Psi[2])*conj(vartve.Psi[2])),cimag(vartve.Psi[2]*conj(vartve.Psi[2])));
   
-  printf("\n");
+  fprintf(out,"\n");
   
-  printf("# phi0 = %lf \n",atan2(creal(vartve.Psi[0]),cimag(vartve.Psi[0])));
-  printf("# phi1 = %lf \n",atan2(creal(vartve.Psi[1]),cimag(vartve.Psi[1])));
-  printf("# phi2 = %lf \n",atan2(creal(vartve.Psi[2]),cimag(vartve.Psi[2])));
+  fprintf(out,"# phi0 = %lf \n",atan2(creal(vartve.Psi[0]),cimag(vartve.Psi[0])));
+  fprintf(out,"# phi1 = %lf \n",atan2(creal(vartve.Psi[1]),cimag(vartve.Psi[1])));
+  fprintf(out,"# phi2 = %lf \n",atan2(creal(vartve.Psi[2]),cimag(vartve.Psi[2])));
   
-  printf("\n");
+  fprintf(out,"\n");
   
-  prt_Cvect(vartve.Psi,"Psi");
-  printf("#ProbSurv b 1-|Psi|^2 dh(last) dh(prev) calls\n");
-  printf("%10.8g\t%g\t%g\t%g\t%g\t%d\n",
+  prt_Cvect(vartve.Psi,"Psi",out);
+  fprintf(out,"#ProbSurv b 1-|Psi|^2 dh(last) dh(prev) calls\n");
+  fprintf(out,"%10.8g\t%g\t%g\t%g\t%g\t%d\n",
     PSurv,vartve.last,1.-creal(sqPsi),vartve.dh,vartve.prev,vartve.calls);
 
+  if(stdout != out)
+  {
+    fclose(out);
+  }
 
 return 0;
 }
+bool process_cmd_line(int argc, char **argv, param *params)
+{
+  char aux_store[MAX_READ_LEN + 1];
+  int64_t m_len;
+  FILE *fdata;
+  bool psi0_changed = false;
 
+  m_len = (int) snprintf(aux_store, MAX_LEN, "%s.lua", prog_name);
+  if(m_len > MAX_LEN)
+  {
+    fprintf(stderr, "[%s] ERROR: default config file name '%s.lua' is too long.\n",
+            prog_name, prog_name);
+
+    return ERR_TOO_LONG;
+  }
+  fdata = fopen(aux_store, "r");
+  if(fdata == NULL)
+  {
+    fprintf(stderr, "[%s] WARNING: default config file '%s' doesn't exist ",
+            prog_name, aux_store);
+    fprintf(stderr, "or you don't have read permission for it.\n");
+  }
+  else
+  {
+    psi0_changed = get_params(aux_store, params, true);
+  }
+
+  if(chkin_poll())
+  {
+    fgets(aux_store, MAX_READ_LEN, stdin);
+    psi0_changed = get_params(aux_store, params, false);
+  }
+
+  int k = 1;
+  while(k < argc)
+  {
+    if(strcmp(argv[k], "-c") == 0)
+    {
+      if(k + 1 < argc)
+      {
+        strncpy(aux_store, argv[k+1], MAX_READ_LEN);
+        aux_store[MAX_READ_LEN] = '\0';
+
+        psi0_changed = get_params(aux_store, params, false);
+        k++;
+        k++;
+        continue;
+      }
+      else
+      {
+        fprintf(stderr, "[%s] WARNING: the option '-c' expects string after it.",
+                prog_name);
+        k++;
+        continue;
+      }
+    }
+    else
+    {
+      fdata = fopen(argv[k], "r");
+      if(fdata == NULL)
+      {
+        fprintf(stderr, "[%s] WARNING: config file '%s' doesn't exist or",
+                prog_name,aux_store);
+        fprintf(stderr, "you don't have read permission for it.\n");
+      }
+      else
+      {
+        fclose(fdata);
+
+        m_len = snprintf(aux_store, MAX_LEN, "%s", argv[k]);
+        if(m_len > MAX_LEN)
+        {
+          fprintf(stderr, "[%s] ERROR: name for config file '%*s' ",
+                  prog_name, MAX_LEN, argv[k]);
+          fprintf(stderr, "is too long.\n");
+
+          return ERR_TOO_LONG;
+        }
+
+        psi0_changed = get_params(aux_store, params, true);
+        k++;
+        continue;
+      }
+    }
+  }
+  return psi0_changed;
+}
+bool get_params(char *src, param *params, bool file_src)
+{
+  int lstat;
+  char aux_store[MAX_READ_LEN];
+  int64_t m_len;
+  bool psi = false;
+
+  lua_State *L = luaL_newstate();
+  luaL_openlibs(L);
+
+  if(file_src)
+  {
+    lstat = luaL_loadfile(L, src);
+    if(lstat != LUA_OK)
+    {
+      const char *mess = lua_tostring(L, -1);
+      fprintf(stderr, "[%s] ERROR: %s\n", prog_name, mess);
+      lua_pop(L, 1);
+      lua_close(L);
+
+      exit(ERR_LUA);
+    }
+  }
+  else
+  {
+    lstat = luaL_loadstring(L, src);
+    if(lstat != LUA_OK)
+    {
+      const char *mess = lua_tostring(L, -1);
+      fprintf(stderr, "[%s] ERROR: %s\n", prog_name, mess);
+      lua_pop(L, 1);
+      lua_close(L);
+
+      exit(ERR_LUA);
+    }
+  }
+
+  lstat = lua_pcall(L, 0, LUA_MULTRET, 0);
+  if(lstat != LUA_OK)
+  {
+    const char *mess = lua_tostring(L, -1);
+    fprintf(stderr, "[%s] ERROR: %s\n", prog_name, mess);
+    lua_pop(L,1);
+    lua_close(L);
+
+    exit(ERR_LUA);
+  }
+
+  for(uint8_t j1 = 0; j1 < P_TOTAL; j1++)
+  {
+    memset(aux_store, '\0', MAX_READ_LEN);
+    lstat = lua_getglobal(L, params[j1].name);
+
+    if(lstat == LUA_TNONE || lstat == LUA_TNIL)
+    {
+      continue;
+    }
+
+    char *mm;
+    double re, im;
+    int isnum;
+
+    switch(lstat)
+    {
+    case LUA_TNUMBER:
+      params[j1].val.v = lua_tonumber(L, -1);
+      break;
+    case LUA_TSTRING:
+      mm = (char *) lua_tolstring(L, -1, (size_t *) &m_len);
+      if(mm == NULL)
+      {
+        /// error, either print it or do something other.
+      }
+      if(m_len > MAX_LEN)
+      {
+        fprintf(stderr, "[%s] ERROR: option value '%s' is too long\n",
+                prog_name, mm);
+
+        lua_close(L);
+
+        exit(ERR_TOO_LONG);
+      }
+      else
+      {
+        m_len = snprintf(params[j1].val.n, MAX_LEN, "%s", mm);
+        if(m_len > MAX_LEN)
+        {
+          fprintf(stderr, "[%s] ERROR: parameter '%s' value '%*s' is too long\n",
+                  prog_name, params[j1].name, MAX_LEN, mm);
+          lua_close(L);
+
+          exit(ERR_TOO_LONG);
+        }
+      }
+      break;
+    case LUA_TTABLE:
+      for(uint8_t j2 = 0; j2 < FLAVS; j2++)
+      {
+        lua_pushinteger(L, j2 + 1);
+        lua_gettable(L, -2);
+
+        int tl = lua_type(L, -1);
+        if(tl != LUA_TTABLE)
+        {
+          fprintf(stderr, "[%s] ERROR: parameter '%s' has wrong value. ",
+                  prog_name, params[j1].name);
+          fprintf(stderr, "Expected type: '%s', obtained: '%s'\n",
+                  lua_typename(L, LUA_TTABLE),
+                  lua_typename(L, lua_type(L, -1)));
+
+          lua_close(L);
+
+          exit(ERR_WRONG_VAL);
+        }
+
+        lua_pushinteger(L, 1);
+        lua_gettable(L, -2);
+        re = lua_tonumberx(L, -1, &isnum);
+        if(!isnum)
+        {
+          fprintf(stderr, "[%s] ERROR: wrong value for parameter '%s'.\n",
+                  prog_name, params[j1].name);
+
+          lua_close(L);
+
+          exit(ERR_WRONG_VAL);
+        }
+        lua_pop(L,1);
+
+        lua_pushinteger(L, 2);
+        lua_gettable(L, -2);
+        im = lua_tonumberx(L, -1, &isnum);
+        if(!isnum)
+        {
+          fprintf(stderr, "[%s] ERROR: wrong value for parameter '%s'.\n",
+                  prog_name, params[j1].name);
+
+          lua_close(L);
+
+          exit(ERR_WRONG_VAL);
+        }
+        lua_pop(L,2);
+
+        params[j1].val.c[j2] = re + I*im;
+        psi = true;
+      }
+      break;
+    default:
+      /// Unsupported
+      break;
+    }
+  }
+
+  lua_close(L);
+  return psi;
+}
+bool chkin_poll(void)
+{
+  int ret;
+  struct pollfd pfd[1] = {0};
+
+  pfd[0].fd = STDIN_FILENO;
+  pfd[0].events = POLLIN;
+  ret = poll(pfd, 1, 0);
+
+  return (ret > 0);
+}
 void initparam (param *par)
 {
   double c12,c13,s12,s13;
@@ -249,21 +571,21 @@ void initparam (param *par)
   strncpy(par[P_MODEL].name,"model",PARAM_NAME-1); 
   strncpy(par[P_MODEL].val.n,"sun",FNAME-1);
 }
-void prtparam(param *par)
+void prtparam(param *par, FILE *out)
 { 
   for(int i=0;i<P_TOTAL;i++)
   { 
     if(par[i].type == FLOAT)
-      printf("%s %s = %lf\n",pref,par[i].name,par[i].val.v);
+      fprintf(out,"%s %s = %lf\n",pref,par[i].name,par[i].val.v);
     if(par[i].type == COMPLEX)
-      printf("%s %s = %lf + I%lf\t%lf + I%lf\t%lf + I%lf\n",
+      fprintf(out,"%s %s = %lf + I%lf\t%lf + I%lf\t%lf + I%lf\n",
         pref,par[i].name,
         creal(par[i].val.c[0]), cimag(par[i].val.c[0]),
         creal(par[i].val.c[1]), cimag(par[i].val.c[1]),
         creal(par[i].val.c[2]), cimag(par[i].val.c[2]));
         
     if(par[i].type == STRING)
-      printf("%s %s = %s\n",pref,par[i].name,par[i].val.n);  
+      fprintf(out,"%s %s = %s\n",pref,par[i].name,par[i].val.n);  
   }
 }
 double vS (double e)
@@ -289,40 +611,40 @@ void lambda (double l[FL], double q, double p)
     }
   }   
 }
-void prt_matr(double matr[FL][FL], char *name)
+void prt_matr(double matr[FL][FL], char *name,FILE *out)
 {
   int i,j;
-  printf("%s %s = ",pref,name);
+  fprintf(out,"%s %s = ",pref,name);
   for(i=0;i<FL;i++)
   {
-    printf("\n%s\t",pref);
+    fprintf(out,"\n%s\t",pref);
     for(j=0;j<FL;j++)
     {
-      printf(" %e",matr[i][j]);
+      fprintf(out," %e",matr[i][j]);
     }
   }
-  printf("\n");
+  fprintf(out,"\n");
 }
-void prt_Cmatr(complex double matr[FL][FL], char *name)
+void prt_Cmatr(complex double matr[FL][FL], char *name,FILE *out)
 {
   int i,j;
-  printf("\n#%s",name);
+  fprintf(out,"\n#%s",name);
   for(i=0;i<FL;i++)
   {
-    printf("\n%s\t",pref);		
+    fprintf(out,"\n%s\t",pref);		
     for(j=0;j<FL;j++)
     {
-      printf("%lf+i(%lf)",creal(matr[i][j]),cimag(matr[i][j]));
+      fprintf(out,"%lf+i(%lf)",creal(matr[i][j]),cimag(matr[i][j]));
     }
   }
 }
-void prt_Cvect(complex double vect[FL], char *name)
+void prt_Cvect(complex double vect[FL], char *name,FILE *out)
 {
   int i;
-  printf("%s %s = \n",pref,name);
+  fprintf(out,"%s %s = \n",pref,name);
   for(i=0;i<FL;i++)
   {
-    printf("%s\t%e+i(%e)\n",pref,creal(vect[i]),cimag(vect[i]));
+    fprintf(out,"%s\t%e+i(%e)\n",pref,creal(vect[i]),cimag(vect[i]));
   }
 }
 void ME4(const basic_ctx *basic, variative_ctx *vartve)
@@ -423,7 +745,8 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
         exA[i][j] = 
           ((1.-l[0]*(r0-l[1]*r1))*unit[i][j]
           +(1./var)*(r0+l[2]*r1)*A[i][j]
-          +1./(var*var)*r1*sqA[i][j])*exp(var*l[0]*I*vartve->dh);
+          +1./(var*var)*r1*sqA[i][j])
+          *(cos(var*l[0]*vartve->dh)+I*sin(var*l[0]*vartve->dh));
       }
     }
     //уравнение эволюции нейтрино в точке en
@@ -432,7 +755,7 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
       vartve->Psi[i] = 
         (exA[i][0]*Psi[0]
         +exA[i][1]*Psi[1]
-        +exA[i][2]*Psi[2])*exp(vartve->dh*z*I);
+        +exA[i][2]*Psi[2])*(cos(z*vartve->dh)+I*sin(z*vartve->dh));
     }
     //S1 и S2 понадобятся для расчета величины следующего шага	
     for(i=0;i<FL;i++)
