@@ -131,11 +131,7 @@ int main (int argc, char* argv[])
   
   bool psi0_changed = false;
   
-  prtparam(params,stderr);
-  
   psi0_changed = process_cmd_line(argc, argv, params);
-  
-  prtparam(params,stderr);
   
   if(0 == strncmp(params[P_OUT].val.n,"SCREEN",FNAME))
   {
@@ -178,7 +174,7 @@ int main (int argc, char* argv[])
   vartve.Psi[0]=0.+I*0.;
   vartve.Psi[1]=0.+I*0.; 
   vartve.Psi[2]=0.+I*0.;
-  vartve.dh=(basic.tol)/10.;
+  vartve.dh=params[P_H].val.v;
   vartve.Er=0.;
   vartve.calls=0;
   vartve.prev=0.;
@@ -216,23 +212,16 @@ int main (int argc, char* argv[])
        +basic.W[i][2]*basic.H0W[2][j]-basic.H0W[i][2]*basic.W[2][j];
     }
   }
-  fprintf(out,"# model:sun\n# model parameters:\t%lf\t%lf\n",65956.000,-10.540);
-  fprintf(out,"%s a = %e\n%s b = %e\n%s tol = %e\n%s E = %e\n%s dh = %e\n",
-    pref,basic.a,pref,basic.b,pref,basic.tol,pref,E,pref,vartve.dh);
-  fprintf(out,"%s s12 = %e\n%s s13 = %e\n%s s12^2 = %e\n%s s13^2 = %e\n",
-    pref,s12,pref,s13,pref,0.308,pref,0.0234);
-  prt_Cvect(basic.Psi0,"Psi0",out);	
   prt_matr(basic.H0,"H0",out);
   prt_matr(basic.W,"W",out);
   prt_matr(basic.H0W,"H0W",out);
   prt_matr(basic.H0H0W,"H0H0W",out);
   prt_matr(basic.WH0W,"WH0W",out);
-  fprintf(out,"\n");
+
   fprintf(out,"#################################################\n");
   fprintf(out,"##            CALCULATION COMPLETED            ##\n");
   fprintf(out,"#################################################\n");
-  fprintf(out,"\n");
-  
+
   ME4(&basic,&vartve);
   
   PSurv = c12*c12*c13*c13*(vartve.Psi[0]*conj(vartve.Psi[0]))
@@ -249,19 +238,16 @@ int main (int argc, char* argv[])
     creal(vartve.Psi[1]*conj(vartve.Psi[1])),cimag(vartve.Psi[1]*conj(vartve.Psi[1])));
   fprintf(out,"# Psi[2]^2 = %lf + I%lf\n",
     creal((vartve.Psi[2])*conj(vartve.Psi[2])),cimag(vartve.Psi[2]*conj(vartve.Psi[2])));
-  
-  fprintf(out,"\n");
-  
+
   fprintf(out,"# phi0 = %lf \n",atan2(creal(vartve.Psi[0]),cimag(vartve.Psi[0])));
   fprintf(out,"# phi1 = %lf \n",atan2(creal(vartve.Psi[1]),cimag(vartve.Psi[1])));
   fprintf(out,"# phi2 = %lf \n",atan2(creal(vartve.Psi[2]),cimag(vartve.Psi[2])));
-  
-  fprintf(out,"\n");
-  
+
   prt_Cvect(vartve.Psi,"Psi",out);
-  fprintf(out,"#ProbSurv b 1-|Psi|^2 dh(last) dh(prev) calls\n");
-  fprintf(out,"%10.8g\t%g\t%g\t%g\t%g\t%d\n",
-    PSurv,vartve.last,1.-creal(sqPsi),vartve.dh,vartve.prev,vartve.calls);
+  fprintf(out,"#ProbSurv b 1-|Psi|^2 calls E tol dh dh(prev) dh(last)\n");
+  fprintf(out,"%14.12g\t%g\t%g\t%d\t%g\t%g\t%g\t%g\t%g\n",
+    PSurv,vartve.last,1.-creal(sqPsi),vartve.calls,E,params[P_TOL].val.v,
+    params[P_H].val.v,vartve.prev,vartve.dh);
 
   if(stdout != out)
   {
@@ -829,11 +815,11 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
       {
         index = LAST;
       }
-      if((e+2.*vartve->dh)>1. && index != LAST && index != OVER)
+      if((e+2.*vartve->dh)>(basic->b) && index != LAST && index != OVER)
       {
         index = PREV;
         vartve->prev = vartve->dh;
-        vartve->dh = (1.-e)/2.;
+        vartve->dh = (basic->b-e)/2.;
         fprintf(stderr,"#!!! if Изменение шага dh = %lf!!!\n",vartve->dh);
       }
     }
