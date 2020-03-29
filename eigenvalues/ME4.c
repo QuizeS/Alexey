@@ -176,7 +176,7 @@ int main (int argc, char* argv[])
   basic.W[2][0] = basic.W[0][2];   basic.W[2][1] = basic.W[1][2];    basic.W[2][2] = s13*s13;
 
   //basic.vS = vS;
-  basic.vS = pLinear;
+  basic.vS = vS;
 
   vartve.Psi[0]=0.+I*0.;
   vartve.Psi[1]=0.+I*0.; 

@@ -5,10 +5,10 @@ LDFLAGS?=-lm -llua
 RM?=rm -v
 
 ME4: ME4.c
-	$(CC) $(CFLAGS) $(_DBG) $(LDFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) $(_DBG) -o $@ $< $(LDFLAGS)
 
 ME4-gdb: ME4.c
-	$(CC) $(GDB_CFLAGS) $(LDFLAGS) -o $@ $<
+	$(CC) $(GDB_CFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:
 	$(RM) *.o ME4

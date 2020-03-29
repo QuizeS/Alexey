@@ -1,14 +1,14 @@
 CC=gcc
 CFLAGS?=-Wall -Wextra -pedantic
 GDB_CFLAGS?=-Wall -Wextra -pedantic -O0 -ggdb
-LDFLAGS?=-lm
+LDFLAGS?=-lm -llua
 RM?=rm -v
 
-dME4: dME4.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
+ME4: ME4.c
+	$(CC) $(CFLAGS) $(_DBG) -o $@ $< $(LDFLAGS)
 
-dME4-gdb: dME4.c
-	$(CC) $(GDB_CFLAGS) $(LDFLAGS) -o $@ $<
+ME4-gdb: ME4.c
+	$(CC) $(GDB_CFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:
-	$(RM) *.o dME4
+	$(RM) *.o ME4
