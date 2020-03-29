@@ -686,7 +686,7 @@ void initparam (param *par)
     
   par[P_E].type = FLOAT;
   strncpy(par[P_E].name,"E",PARAM_NAME-1); 
-  par[P_E].val.v = 7.05;
+  par[P_E].val.v = 1.;
   
   par[P_B].type = FLOAT; 
   strncpy(par[P_B].name,"b",PARAM_NAME-1);    
