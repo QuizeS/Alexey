@@ -54,9 +54,11 @@ enum
 {
   P_A=0,P_B,P_E,P_TOL,
   P_S12,P_S13,P_PSI0,
-  P_H,P_OUT,P_MODEL,P_TOTAL
+  P_H,P_OUT,P_MODEL,P_SCAN_STEPS,P_TOTAL
 };
 
+int NUM=100;
+double cA=500.,cB=50.;
 const char *pref = "#"; 
 char prog_name[MAX_LEN + 1];
 
@@ -97,12 +99,15 @@ void prtparam (param*,FILE*);
 bool get_params(char *,param *,bool );//
 bool chkin_poll(void);
 bool process_cmd_line(int , char **, param *);
-double vS (double); 
+double vS (double);
+double pLinear (double);
 void lambda (double [FL], double, double);
+void lambda2 (double [2*FL-1], double , double );
 void prt_matr(double [FL][FL], char *,FILE*);
 void prt_Cmatr(double complex [FL][FL], char *,FILE*);
 void prt_Cvect(double complex [FL], char *,FILE*);
 void ME4(const basic_ctx *,variative_ctx *); 
+void eigval(const basic_ctx *,variative_ctx *,param *);
 
 int main (int argc, char* argv[])
 {
@@ -143,6 +148,7 @@ int main (int argc, char* argv[])
   }
   prtparam(params,out);
   
+  NUM= (int) params[P_SCAN_STEPS].val.v; 
   E=params[P_E].val.v;
   PSurv=0.;
   sqPsi=0.+I*0.;
@@ -169,7 +175,8 @@ int main (int argc, char* argv[])
   basic.W[1][0] = basic.W[0][1];   basic.W[1][1] = s12*s12*c13*c13; basic.W[1][2] = s12*c13*s13;
   basic.W[2][0] = basic.W[0][2];   basic.W[2][1] = basic.W[1][2];    basic.W[2][2] = s13*s13;
 
-  basic.vS = vS;
+  //basic.vS = vS;
+  basic.vS = pLinear;
 
   vartve.Psi[0]=0.+I*0.;
   vartve.Psi[1]=0.+I*0.; 
@@ -218,6 +225,9 @@ int main (int argc, char* argv[])
   prt_matr(basic.H0H0W,"H0H0W",out);
   prt_matr(basic.WH0W,"WH0W",out);
 
+
+ //eigval(&basic,&vartve,params);
+  
   fprintf(out,"#################################################\n");
   fprintf(out,"##            CALCULATION COMPLETED            ##\n");
   fprintf(out,"#################################################\n");
@@ -519,7 +529,7 @@ void initparam (param *par)
     
   par[P_E].type = FLOAT;
   strncpy(par[P_E].name,"E",PARAM_NAME-1); 
-  par[P_E].val.v = 7.05;
+  par[P_E].val.v = 1.0;
   
   par[P_B].type = FLOAT; 
   strncpy(par[P_B].name,"b",PARAM_NAME-1);    
@@ -548,6 +558,10 @@ void initparam (param *par)
   par[P_H].type = FLOAT;
   strncpy(par[P_H].name,"dh",PARAM_NAME-1); 
   par[P_H].val.v = par[P_TOL].val.v;
+
+  par[P_SCAN_STEPS].type = FLOAT;
+  strncpy(par[P_SCAN_STEPS].name,"scan_steps",PARAM_NAME-1); 
+  par[P_SCAN_STEPS].val.v = 100.; 
   
   par[P_OUT].type = STRING;
   strncpy(par[P_OUT].name,"out",PARAM_NAME-1); 
@@ -578,6 +592,10 @@ double vS (double e)
 {
   return 65956.*exp(-10.54*e);
 }
+double pLinear (double e)
+{
+  return cA+e*(cB-cA);
+}
 void lambda (double l[FL], double q, double p)
 {
   int i,j;
@@ -595,7 +613,7 @@ void lambda (double l[FL], double q, double p)
         var = l[j]; l[j] = l[j-1]; l[j-1] = var;
       }
     }
-  }   
+  }
 }
 void prt_matr(double matr[FL][FL], char *name,FILE *out)
 {
@@ -798,7 +816,9 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
     if(vartve->Er >= basic->tol)
     {
       vartve->dh = s*vartve->dh*pow((basic->tol/vartve->Er),1./3.);
-      fprintf(stderr,"#!!!Изменение шага dh = %lf!!!\n",vartve->dh);
+#ifdef DEBUG
+      fprintf(stderr,"#!!!Изменение шага dh = %g\n",vartve->dh);
+#endif
     }
     else
     {
@@ -820,10 +840,111 @@ void ME4(const basic_ctx *basic, variative_ctx *vartve)
         index = PREV;
         vartve->prev = vartve->dh;
         vartve->dh = (basic->b-e)/2.;
+#ifdef DEBUG
         fprintf(stderr,"#!!! if Изменение шага dh = %lf!!!\n",vartve->dh);
+#endif
       }
     }
     vartve->calls++;
   }
   vartve->last=e;  
 }
+void eigval(const basic_ctx *basic, variative_ctx *vartve, param *pr)
+{
+    int i,j;
+    char aux_store[MAX_READ_LEN + 1];
+    double t,p,q; 
+    double sqA[FL][FL],A[FL][FL],l[2*FL-1];
+    FILE *file;
+    snprintf(aux_store, MAX_LEN, "eigen_%d_E%5.3e.dat",NUM,pr[P_E].val.v);
+    file = fopen(aux_store,"w+");
+
+
+    basic_ctx tb;
+    memcpy(tb.H0,basic->H0,FL*FL*sizeof(double)); 
+    memcpy(tb.W,basic->W,FL*FL*sizeof(double));
+    memcpy(tb.H0W,basic->H0W,FL*FL*sizeof(double));
+    memcpy(tb.H0H0W,basic->H0H0W,FL*FL*sizeof(double));
+    memcpy(tb.WH0W,basic->WH0W,FL*FL*sizeof(double));
+    memcpy(tb.Psi0,basic->Psi0,FL*sizeof(complex double));
+    tb.tol=basic->tol; tb.a=basic->a; tb.vS=basic->vS;
+
+    t=basic->a+(basic->b-basic->a)/NUM;
+    while(t < basic->b+(basic->b-basic->a)/(2.*NUM))
+    {
+      for(i=0;i<FL;i++)
+      {
+        for(j=0;j<FL;j++)
+        {
+          A[i][j] = basic->H0[i][j] + basic->vS(t)*basic->W[i][j];
+        }
+      }
+      for(i=0;i<FL;i++)
+      {
+        for(j=0;j<FL;j++)
+        {
+          sqA[i][j] = 
+              A[i][0]*A[0][j]
+             +A[i][1]*A[1][j]
+             +A[i][2]*A[2][j];
+
+        }
+      }
+
+      p = (double)((1./2.)*(sqA[0][0]+sqA[1][1]+sqA[2][2])
+            -(5./6.)*(A[0][0]+A[1][1]+A[2][2])*(A[0][0]+A[1][1]+A[2][2]));
+      q = (double)(
+        (-1.)*(A[0][0]*A[1][1]*A[2][2]+A[1][0]*A[0][2]*A[2][1]     
+        +A[2][0]*A[0][1]*A[1][2]-A[2][0]*A[1][1]*A[0][2]
+        -A[0][0]*A[1][2]*A[2][1]-A[1][0]*A[0][1]*A[2][2])
+        -(13./54.)*(A[0][0]+A[1][1]+A[2][2])
+        *(A[0][0]+A[1][1]+A[2][2])
+        *(A[0][0]+A[1][1]+A[2][2])
+        +(1./6.)*(A[0][0]+A[1][1]+A[2][2])*(sqA[0][0]+sqA[1][1]+sqA[2][2]));
+     
+      lambda2(l,q,p);
+      tb.b=t;
+#ifdef DEBUG2
+      fprintf(stderr,"%lf\n",t);
+#endif
+      ME4(&tb,vartve);
+      vartve->dh=1e-3;
+      fprintf(file,"%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",
+                      t,l[0],l[1],l[2],l[3],l[4],
+                      atan2(creal(vartve->Psi[0]),cimag(vartve->Psi[0])),
+                      atan2(creal(vartve->Psi[1]),cimag(vartve->Psi[1])),
+                      atan2(creal(vartve->Psi[2]),cimag(vartve->Psi[2]))
+                      );
+
+      t = t+(basic->b-basic->a)/NUM;
+    }
+    fclose(file);
+}
+void lambda2 (double l[2*FL-1], double q, double p)
+{
+  int i,j;
+  double var;
+  l[2] = 2.*cos((1./3.)*acos((3.*q/(2.*p))*sqrt(-3./p))-(2.*M_PI*0.)/3.);
+  l[1] = 2.*cos((1./3.)*acos((3.*q/(2.*p))*sqrt(-3./p))-(2.*M_PI*1.)/3.);
+  l[0] = 2.*cos((1./3.)*acos((3.*q/(2.*p))*sqrt(-3./p))-(2.*M_PI*2.)/3.);
+  
+  for( i=0; i < FL; i++) 
+  {
+    for( j = FL-1; j > i; j-- )
+    {     
+      if( l[j-1] > l[j] ) 
+      {
+        var = l[j]; l[j] = l[j-1]; l[j-1] = var;
+      }
+    }
+  }
+  l[4]=l[2]-l[0];
+  l[3]=l[1]-l[0];
+  l[0]=sqrt(-p/3.)*l[0];
+  l[1]=sqrt(-p/3.)*l[1];
+  l[2]=sqrt(-p/3.)*l[2];
+  l[3]=sqrt(-p/3.)*l[3];
+  l[4]=sqrt(-p/3.)*l[4];
+
+}
+
