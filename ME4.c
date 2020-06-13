@@ -175,8 +175,8 @@ int main (int argc, char* argv[])
   basic.W[1][0] = basic.W[0][1];   basic.W[1][1] = s12*s12*c13*c13; basic.W[1][2] = s12*c13*s13;
   basic.W[2][0] = basic.W[0][2];   basic.W[2][1] = basic.W[1][2];    basic.W[2][2] = s13*s13;
 
-  //basic.vS = vS;
-  basic.vS = pLinear;
+  basic.vS = vS;
+  //basic.vS = pLinear;
 
   vartve.Psi[0]=0.+I*0.;
   vartve.Psi[1]=0.+I*0.; 
@@ -226,13 +226,13 @@ int main (int argc, char* argv[])
   prt_matr(basic.WH0W,"WH0W",out);
 
 
- //eigval(&basic,&vartve,params);
+ eigval(&basic,&vartve,params);
   
   fprintf(out,"#################################################\n");
   fprintf(out,"##            CALCULATION COMPLETED            ##\n");
   fprintf(out,"#################################################\n");
 
-  ME4(&basic,&vartve);
+  //ME4(&basic,&vartve);
   
   PSurv = c12*c12*c13*c13*(vartve.Psi[0]*conj(vartve.Psi[0]))
          +s12*s12*c13*c13*(vartve.Psi[1]*conj(vartve.Psi[1]))
@@ -856,7 +856,7 @@ void eigval(const basic_ctx *basic, variative_ctx *vartve, param *pr)
     double t,p,q; 
     double sqA[FL][FL],A[FL][FL],l[2*FL-1];
     FILE *file;
-    snprintf(aux_store, MAX_LEN, "eigen_%d_E%5.3e.dat",NUM,pr[P_E].val.v);
+    snprintf(aux_store, MAX_LEN, "b_%1.3lf_eigen_%d_E%5.3e.dat",pr[P_B],NUM,pr[P_E].val.v);
     file = fopen(aux_store,"w+");
 
 
@@ -913,7 +913,10 @@ void eigval(const basic_ctx *basic, variative_ctx *vartve, param *pr)
                       t,l[0],l[1],l[2],l[3],l[4],
                       atan2(creal(vartve->Psi[0]),cimag(vartve->Psi[0])),
                       atan2(creal(vartve->Psi[1]),cimag(vartve->Psi[1])),
-                      atan2(creal(vartve->Psi[2]),cimag(vartve->Psi[2]))
+                      atan2(creal(vartve->Psi[2]),cimag(vartve->Psi[2])),
+		      creal(vartve->Psi[0],cimag(vartve->Psi[0]),
+		      creal(vartve->Psi[1],cimag(vartve->Psi[1]),
+		      creal(vartve->Psi[2],creal(vartve->Psi[2])
                       );
 
       t = t+(basic->b-basic->a)/NUM;
