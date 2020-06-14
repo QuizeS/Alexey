@@ -1,5 +1,3 @@
-set terminal pdfcairo enhanced font "DejaVuSerif"
-
 array E[7]
 array N[7]
 array meow[19]
@@ -40,12 +38,11 @@ meow[18] = "ψ_2"
 meow[19] = "ψ_3"
 
 dfile(f,a,b) = sprintf("b_%.2f_eigen_%d_E1.000e+00%d.dat", f, a, b)
-ofile(f,a,b) = sprintf("b_%.2f_eigen_%d_E1.000e+00%d.pdf", f, a, b)
 
 # #############################################################################
 # ### Column: see 'meow' array.
 # ### L,N,C :: UpperLimit: 0.2/1.0 ; NumberOfPoints: 1–7 ; Column: 2–14 ;
-varE(a,b,c) = sprintf("set xlabel \"%s\" ; set ylabel \"%s\" ; set title sprintf(\"%s energy dependance at N = %s points\", N[%d]); plot for [i=1:7] dfile(%.3f, N[%d], E[i]) u 1:%d t sprintf(\"10^{%s}\", E[i])", "ξ", meow[c], meow[c], "%d", b, a, b, c, "%d")
+varE(a,b,c) = sprintf("set xlabel \"%s\" ; set ylabel \"%s\"; set title sprintf(\"%s energy dependance at N = %s points\", N[%d]); plot for [i=1:7] dfile(%.3f, N[%d], E[i]) u 1:%d t sprintf(\"10^{%s}\", E[i])", "ξ", meow[c], meow[c], "%d", b, a, b, c, "%d")
 # ### L,E,C :: UpperLimit; 0.2/1.0 ; Energy: 1–7 ; Column: 2–14 ;
 varN(a,b,c) = sprintf("set xlabel \"%s\" ; set ylabel \"%s\" ; set title sprintf(\"%s points dependance at E = 10^{%s}\", E[%d]) ;  plot for [i=1:7] dfile(%.3f, N[i], E[%d]) u 1:%d t sprintf(\"%s\", N[i])", "ξ", meow[c], meow[c], "%d", b, a, b, c, "%d")
 # #############################################################################
@@ -58,6 +55,3 @@ phPvN(a,b,c) = sprintf("set xlabel \"%s\" ; set ylabel \"%s\" ; set zlabel \"%s\
 # ### Phase Picture, single energy, single points set.
 # ### L,N,C,E :: UpperLimit: 0.2/1.0 ; NumberOfPoints: 1–7 ; Component: 1–3 ; Energy (power): 1–7 ;
 phP(a,b,c,p) = sprintf("set xlabel \"%s\" ; set ylabel \"%s\" ; set zlabel \"%s\" ; set title sprintf(\"Phase picture for %s at E = 10^{%s} and N = %s\", E[%d], N[%d]) ; splot dfile(%.3f, N[%d], E[%d]) u %d:%d:1 t ''", meow[c+9], meow[c+12], "ξ", meow[c+16], "%d", "%d", p, b, a, b, p, c+9, c+12)
-
-set output ofile(1.0,4,2)
-eval phPvE(1.0,4,2) 
